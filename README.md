@@ -40,8 +40,12 @@
 需要 Go 1.27+ 和 Windows 10/11（自带 WebView2 Runtime）。
 
 ```bash
+# 开发：保留控制台窗口方便看日志
 go build -ldflags "-X github.com/egoist/mygo.production=1" -o timer.exe .
 ./timer.exe
+
+# 发布：-H windowsgui 不弹控制台窗口，-s -w 去调试信息减小体积
+go build -trimpath -ldflags "-s -w -H windowsgui -X github.com/egoist/mygo.production=1" -o timer.exe .
 ```
 
 前端在 `frontend/`（纯静态，无构建步骤）：`i18n.js` 是主窗口与设置页共用的多语言字典，加语言时在 Go 的 `i18n()`（托盘/标题）和 `i18n.js`（页面文案）各加一份即可。直接用浏览器打开 `frontend/index.html` 可预览样式（自动降级：localStorage 代替 Go 绑定）。
