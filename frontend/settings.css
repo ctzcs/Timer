@@ -1,0 +1,74 @@
+/* 设置窗口：简洁表单卡片 */
+
+:root { color-scheme: light; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #f3f3f1;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  width: 300px;
+  padding: 20px 24px 24px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #26262a;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #3c3c40;
+  cursor: pointer;
+}
+
+select {
+  min-width: 130px;
+  padding: 4px 8px;
+  border: 1px solid #d5d5d2;
+  border-radius: 7px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  color: #26262a;
+  outline: none;
+}
+
+select:focus { border-color: #8a8a86; }
+
+.rule {
+  height: 1px;
+  margin: 8px 0;
+  background: #ececea;
+}
+
+.chk input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #2f7fe0;
+  cursor: pointer;
+}
+
+.chk span { flex: 1; }

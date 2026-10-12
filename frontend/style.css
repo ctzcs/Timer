@@ -1,0 +1,238 @@
+/* 仿实体视觉计时器外观：白色圆角机身 + 深色刻度条 + 液晶七段码屏 */
+
+@font-face {
+  font-family: "DSEG7 Classic";
+  src: url("./fonts/DSEG7Classic-Bold.woff2") format("woff2");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "DSEG7 Classic";
+  src: url("./fonts/DSEG7Classic-Light.woff2") format("woff2");
+  font-weight: 300;
+}
+
+:root { color-scheme: light; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- 机身 ---- */
+
+.device {
+  /* 拖动区域：整个机身；交互元件用 no-drag 排除 */
+  --app-region: drag;
+  position: relative;
+  width: 512px;
+  height: 110px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  padding: 22px 12px;
+  display: flex;
+  gap: 12px;
+  background: linear-gradient(180deg, #f7f7f4 0%, #efefec 55%, #e4e4e1 100%);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.18),
+    0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+/* 顶部按钮带的一点点凹槽暗示（还原实体机顶边） */
+.device::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(0, 0, 0, 0.045);
+}
+
+/* ---- 刻度条 ---- */
+
+.bar {
+  --app-region: no-drag;
+  flex: 1;
+  box-sizing: border-box;
+  border-radius: 7px;
+  padding: 5px;
+  display: flex;
+  gap: 3px;
+  background: linear-gradient(180deg, #d9d9d4, #cfcfca);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.seg {
+  flex: 1;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #d2d2cd, #c8c8c3); /* 熄灭态 */
+  box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: background 0.25s linear;
+}
+
+.seg.on {
+  background: linear-gradient(180deg, #48484d 0%, #303035 45%, #1d1d21 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.seg.warn {
+  background: linear-gradient(180deg, #8a4040 0%, #6e2f2f 100%);
+}
+
+/* ---- 液晶屏 ---- */
+
+.lcd {
+  --app-region: no-drag;
+  position: relative;
+  width: 152px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #c8ccc0 0%, #bdc1b5 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.30),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.digits {
+  font-family: "DSEG7 Classic", monospace;
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1;
+  color: #21251e;
+  letter-spacing: 1px;
+}
+
+.digits.ghost {
+  position: absolute;
+  color: rgba(30, 36, 26, 0.075);
+}
+
+/* 运行中暂停：数字慢闪 */
+.lcd.paused .digits:not(.ghost) { animation: blink-slow 1.1s steps(1) infinite; }
+/* 结束：数字快闪 */
+.lcd.finished .digits:not(.ghost) { animation: blink-fast 0.5s steps(1) infinite; }
+
+@keyframes blink-slow { 50% { opacity: 0.25; } }
+@keyframes blink-fast { 50% { opacity: 0.1; } }
+
+/* ---- 悬停控制条 ---- */
+
+.controls {
+  --app-region: no-drag;
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.88);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.device:hover .controls,
+.device.always .controls {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.ctl {
+  --app-region: no-drag;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #e8e8e6;
+  font-size: 12px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ctl:hover { background: rgba(255, 255, 255, 0.16); }
+.ctl:active { background: rgba(255, 255, 255, 0.28); }
+
+.ctl-main {
+  min-width: 32px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+}
+
+.ctl-main:hover { background: rgba(255, 255, 255, 0.26); }
+
+.ctl-gap {
+  width: 1px;
+  height: 14px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---- 自定义时长输入 ---- */
+
+.dur {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0 6px 0 8px;
+  color: #b9b9b6;
+  font-size: 12px;
+  line-height: 24px;
+  user-select: none;
+}
+
+.dur input {
+  width: 2.4em;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+}
+
+.dur input:focus { border-bottom-color: rgba(255, 255, 255, 0.85); }
+
+.dur input[readonly] { color: #8a8a88; }
+
+/* 隐藏数字输入的上下箭头 */
+.dur input::-webkit-outer-spin-button,
+.dur input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

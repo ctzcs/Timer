@@ -1,0 +1,83 @@
+// 计时器 UI 多语言字典：主窗口提示文案与设置页共用。
+// 语言代码与 Go 侧保持一致：zh-CN / en / ja / ru。
+"use strict";
+
+window.TimerI18N = {
+  "zh-CN": {
+    unit: "分",
+    durTip: "自定义时长（1–99 分钟），回车确认",
+    barTip: "滚轮调分钟，点击开始/暂停",
+    lcdTip: "点击开始/暂停，双击归零",
+    actM5: "减 5 分钟",
+    actM1: "减 1 分钟",
+    actToggle: "开始 / 暂停（空格）",
+    actP1: "加 1 分钟",
+    actP5: "加 5 分钟",
+    actReset: "归零（R）",
+    actHide: "隐藏到托盘（Esc）",
+    settings: "设置",
+    language: "语言",
+    sound: "提示音",
+    onTop: "窗口置顶",
+    autoStart: "开机自启",
+  },
+  en: {
+    unit: "min",
+    durTip: "Custom duration (1–99 min), press Enter",
+    barTip: "Scroll to adjust minutes, click to start/pause",
+    lcdTip: "Click to start/pause, double-click to reset",
+    actM5: "Minus 5 minutes",
+    actM1: "Minus 1 minute",
+    actToggle: "Start / Pause (Space)",
+    actP1: "Plus 1 minute",
+    actP5: "Plus 5 minutes",
+    actReset: "Reset (R)",
+    actHide: "Hide to tray (Esc)",
+    settings: "Settings",
+    language: "Language",
+    sound: "Sound",
+    onTop: "Always on Top",
+    autoStart: "Launch at Login",
+  },
+  ja: {
+    unit: "分",
+    durTip: "カスタム時間（1〜99分）、Enterで決定",
+    barTip: "ホイールで分を調整、クリックで開始/一時停止",
+    lcdTip: "クリックで開始/一時停止、ダブルクリックでリセット",
+    actM5: "5分減らす",
+    actM1: "1分減らす",
+    actToggle: "開始 / 一時停止（スペース）",
+    actP1: "1分増やす",
+    actP5: "5分増やす",
+    actReset: "リセット（R）",
+    actHide: "トレイへ隠す（Esc）",
+    settings: "設定",
+    language: "言語",
+    sound: "サウンド",
+    onTop: "最前面に表示",
+    autoStart: "サインイン時に起動",
+  },
+  ru: {
+    unit: "мин",
+    durTip: "Своя длительность (1–99 мин), Enter — применить",
+    barTip: "Колесо — минуты, клик — старт/пауза",
+    lcdTip: "Клик — старт/пауза, двойной клик — сброс",
+    actM5: "Минус 5 минут",
+    actM1: "Минус 1 минута",
+    actToggle: "Старт / пауза (пробел)",
+    actP1: "Плюс 1 минута",
+    actP5: "Плюс 5 минут",
+    actReset: "Сброс (R)",
+    actHide: "Скрыть в трей (Esc)",
+    settings: "Настройки",
+    language: "Язык",
+    sound: "Звук",
+    onTop: "Поверх всех окон",
+    autoStart: "Запуск при входе",
+  },
+};
+
+// 取指定语言的字典，缺失时回退中文。
+window.TimerI18N.pick = function (lang) {
+  return this[lang] || this["zh-CN"];
+};
