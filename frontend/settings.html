@@ -21,6 +21,16 @@
 
     <div class="rule"></div>
 
+    <div class="row">
+      <label id="t-alarm" for="alarm">到点铃声</label>
+      <select id="alarm">
+        <option value="once"></option>
+        <option value="10"></option>
+        <option value="30"></option>
+        <option value="loop"></option>
+      </select>
+    </div>
+
     <label class="row chk">
       <input type="checkbox" id="sound" />
       <span id="t-sound">提示音</span>
@@ -33,6 +43,8 @@
       <input type="checkbox" id="autostart" />
       <span id="t-autostart">开机自启</span>
     </label>
+
+    <div class="ver">v0.1.1</div>
   </div>
   <script src="./i18n.js"></script>
   <script src="./settings.js"></script>

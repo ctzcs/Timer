@@ -10,10 +10,12 @@ const el = {
   sound: document.getElementById("t-sound"),
   onTop: document.getElementById("t-ontop"),
   autoStart: document.getElementById("t-autostart"),
+  alarm: document.getElementById("t-alarm"),
   lang: document.getElementById("lang"),
   soundChk: document.getElementById("sound"),
   onTopChk: document.getElementById("ontop"),
   autoStartChk: document.getElementById("autostart"),
+  alarmSel: document.getElementById("alarm"),
 };
 
 let currentLang = "zh-CN";
@@ -29,9 +31,18 @@ function applyState(s) {
   el.sound.textContent = d.sound;
   el.onTop.textContent = d.onTop;
   el.autoStart.textContent = d.autoStart;
+  el.alarm.textContent = d.alarm;
+  // 铃声时长选项文案随语言刷新（value 不变）
+  for (const opt of el.alarmSel.options) {
+    if (opt.value === "once") opt.textContent = d.alarmOnce;
+    else if (opt.value === "10") opt.textContent = d.alarm10;
+    else if (opt.value === "30") opt.textContent = d.alarm30;
+    else if (opt.value === "loop") opt.textContent = d.alarmLoop;
+  }
 
   // 避免回显覆盖正在进行的交互
   if (document.activeElement !== el.lang) el.lang.value = currentLang;
+  if (document.activeElement !== el.alarmSel) el.alarmSel.value = s.alarm || "loop";
   el.soundChk.checked = s.sound !== false;
   el.onTopChk.checked = s.alwaysOnTop === true;
   el.autoStartChk.checked = s.autoStart === true;
@@ -41,6 +52,8 @@ async function init() {
   if (inMyGo) {
     el.lang.addEventListener("change", () =>
       window.mygo.call("Timer.SetLang", el.lang.value).catch((e) => console.error(e)));
+    el.alarmSel.addEventListener("change", () =>
+      window.mygo.call("Timer.SetAlarm", el.alarmSel.value).catch((e) => console.error(e)));
     el.soundChk.addEventListener("change", () =>
       window.mygo.call("Timer.SetSound", el.soundChk.checked).catch((e) => console.error(e)));
     el.onTopChk.addEventListener("change", () =>
@@ -52,7 +65,7 @@ async function init() {
     }
     applyState(await window.mygo.call("Timer.LoadSettings"));
   } else {
-    applyState({ lang: "zh-CN", sound: true, alwaysOnTop: true, autoStart: false });
+    applyState({ lang: "zh-CN", sound: true, alwaysOnTop: true, autoStart: false, alarm: "loop" });
   }
 }
 

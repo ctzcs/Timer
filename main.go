@@ -26,12 +26,16 @@ var trayIcon []byte
 
 var langs = map[string]bool{"zh-CN": true, "en": true, "ja": true, "ru": true}
 
+// 到点铃声时长：once=响一遍，数字=秒数，loop=持续响直到点击。
+var alarmModes = map[string]bool{"once": true, "10": true, "30": true, "loop": true}
+
 // Prefs 是持久化到 config.json 的用户偏好（开机自启读系统，不落盘）。
 type Prefs struct {
 	Minutes     int    `json:"minutes"`
 	Sound       bool   `json:"sound"`
 	AlwaysOnTop bool   `json:"alwaysOnTop"`
 	Lang        string `json:"lang"`
+	Alarm       string `json:"alarm"`
 }
 
 // UIState 是发给前端的完整状态。
@@ -41,9 +45,12 @@ type UIState struct {
 	AlwaysOnTop bool   `json:"alwaysOnTop"`
 	AutoStart   bool   `json:"autoStart"`
 	Lang        string `json:"lang"`
+	Alarm       string `json:"alarm"`
 }
 
-func defaultPrefs() Prefs { return Prefs{Minutes: 30, Sound: true, AlwaysOnTop: true, Lang: "zh-CN"} }
+func defaultPrefs() Prefs {
+	return Prefs{Minutes: 30, Sound: true, AlwaysOnTop: true, Lang: "zh-CN", Alarm: "loop"}
+}
 
 // stateEvent 把状态推给前端（所有窗口），托盘勾选与页面据此保持一致。
 var stateEvent = mygo.NewEvent[UIState]("state")
@@ -94,7 +101,11 @@ func (t *timerApp) snapshot() UIState {
 	if !langs[lang] {
 		lang = "zh-CN"
 	}
-	return UIState{p.Minutes, p.Sound, p.AlwaysOnTop, mygo.App.OpenAtLogin(), lang}
+	alarm := p.Alarm
+	if !alarmModes[alarm] {
+		alarm = "loop"
+	}
+	return UIState{p.Minutes, p.Sound, p.AlwaysOnTop, mygo.App.OpenAtLogin(), lang, alarm}
 }
 
 // syncState 回写托盘菜单文案与勾选、重装快照，并把状态广播给所有窗口。
@@ -224,6 +235,18 @@ func (t *timerApp) SetLang(lang string) {
 	t.syncState()
 }
 
+// SetAlarm 设置到点铃声时长（once / 10 / 30 / loop）。
+func (t *timerApp) SetAlarm(mode string) {
+	if !alarmModes[mode] {
+		return
+	}
+	t.mu.Lock()
+	t.prefs.Alarm = mode
+	t.mu.Unlock()
+	t.persistPrefs()
+	t.syncState()
+}
+
 // HideToTray 隐藏主窗口（托盘仍在）。
 func (t *timerApp) HideToTray() {
 	t.mu.Lock()
@@ -258,8 +281,8 @@ func (t *timerApp) openSettings() {
 	opts := mygo.WindowOptions{
 		Title:         i18n(lang).settings,
 		URL:           "/settings.html",
-		Width:         340,
-		Height:        300,
+		Width:         380,
+		Height:        370,
 		DisableResize: true,
 	}
 	if main != nil {
@@ -304,6 +327,9 @@ func readPrefs() (Prefs, error) {
 	}
 	if !langs[p.Lang] {
 		p.Lang = "zh-CN"
+	}
+	if !alarmModes[p.Alarm] {
+		p.Alarm = "loop"
 	}
 	return p, nil
 }
@@ -428,6 +454,8 @@ func (t *timerApp) applySetFlag(kv string) {
 		t.SetAutoStart(val == "on" || val == "true" || val == "1")
 	case "lang":
 		t.SetLang(val)
+	case "alarm":
+		t.SetAlarm(val)
 	default:
 		log.Printf("未知开关: %s", name)
 	}

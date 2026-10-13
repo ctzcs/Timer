@@ -33,6 +33,8 @@ let running = false;
 let finished = false;
 let soundOn = true;
 let lang = "zh-CN";
+let alarmSetting = "loop"; // once / 10 / 30 / loop
+let alarmTimer = null;     // 循环响的定时器
 let beepCtx = null;
 
 // ---- MyGo IPC（带浏览器降级） ----
@@ -78,6 +80,8 @@ function applyTexts() {
 function applyState(s) {
   if (!s) return;
   soundOn = s.sound !== false;
+  if (!soundOn) stopAlarm(); // 提示音被关掉时立即静音
+  if (s.alarm) alarmSetting = s.alarm;
   if (s.lang && s.lang !== lang) {
     lang = s.lang;
     applyTexts();
@@ -151,6 +155,30 @@ function playAlarm() {
   } catch (e) { /* 无声环境下忽略 */ }
 }
 
+// startAlarm 按设置循环播放铃音：once=一遍；10/30=限定秒数；loop=直到点击停止。
+function startAlarm() {
+  if (!soundOn) return;
+  stopAlarm();
+  playAlarm();
+  if (alarmSetting === "once") return;
+  const limitMs = alarmSetting === "loop" ? Infinity : parseInt(alarmSetting, 10) * 1000;
+  const deadline = Date.now() + limitMs;
+  alarmTimer = setInterval(() => {
+    if (!finished || Date.now() >= deadline) {
+      stopAlarm();
+      return;
+    }
+    playAlarm(); // 一轮约 3.3 秒，间隔略大于一轮保证不重叠
+  }, 3400);
+}
+
+function stopAlarm() {
+  if (alarmTimer) {
+    clearInterval(alarmTimer);
+    alarmTimer = null;
+  }
+}
+
 // ---- 计时循环 ----
 
 function tick() {
@@ -160,7 +188,7 @@ function tick() {
       remainSec = 0;
       running = false;
       finished = true;
-      playAlarm();
+      startAlarm();
     }
     render();
   }
@@ -175,6 +203,7 @@ function setMinutes(min) {
   remainSec = totalSec;
   running = false;
   finished = false;
+  stopAlarm();
   if (document.activeElement !== minsInput) minsInput.value = min;
   ipc("SaveMinutes", min);
   render();
@@ -210,6 +239,7 @@ function reset() {
   remainSec = totalSec;
   running = false;
   finished = false;
+  stopAlarm(); // 到点循环响时，点击/空格/R 停铃
   minsInput.readOnly = false;
   render();
 }
@@ -254,7 +284,7 @@ controls.addEventListener("click", (e) => {
     case "p5": nudge(5); break;
     case "toggle": toggleRun(); break;
     case "reset": reset(); break;
-    case "hide": ipc("HideToTray"); break;
+    case "hide": stopAlarm(); ipc("HideToTray"); break;
   }
 });
 
@@ -265,7 +295,7 @@ window.addEventListener("keydown", (e) => {
     case "r": case "R": reset(); break;
     case "ArrowUp": e.preventDefault(); nudge(e.shiftKey ? 5 : 1); break;
     case "ArrowDown": e.preventDefault(); nudge(e.shiftKey ? -5 : -1); break;
-    case "Escape": ipc("HideToTray"); break;
+    case "Escape": stopAlarm(); ipc("HideToTray"); break;
   }
 });
 

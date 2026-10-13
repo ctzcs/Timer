@@ -12,7 +12,7 @@ Built on [MyGo](https://github.com/egoist/mygo) (Go + system WebView2). Pure Go 
 
 - **Top bar (appears on hover, high-frequency actions)**: custom duration input, ±1/±5 minutes, start/pause, reset, hide to tray
 - **Tray (low-frequency toggles + entry point)**: show/hide, always on top, sound, launch at login, Settings…
-- **Settings window** (opened from the tray's "Settings…"): language, sound, always on top, launch at login
+- **Settings window** (opened from the tray's "Settings…"): language, alarm duration, sound, always on top, launch at login
 
 All three share a single piece of state (Go is the single source of truth + `state` event broadcast): wherever the change comes from — tray checkbox, settings window, or UI — the others update instantly. The UI language (中文 / English / 日本語 / Русский) applies everywhere: tray menus, window titles, the settings page, and top-bar hints.
 
@@ -22,7 +22,7 @@ All three share a single piece of state (Go is the single source of truth + `sta
 - Close/Esc hides to tray; **launch at login** writes to the current user's Run registry key (the checkbox state follows the system)
 - **Position & preference memory**: window position (MyGo StateKey) and duration/sound/on-top/language (`userData/config.json`) are restored across launches
 - Single instance: launching again brings the running timer to the front
-- Timing is based on timestamp differences, so it stays accurate after system sleep or throttling; at zero the digits flash and an ascending chime plays for ~3 s (G5→C6→E6, can be muted); the last 10 seconds flash red
+- Timing is based on timestamp differences, so it stays accurate after system sleep or throttling; at zero the digits flash and the ascending chime loops — **click the timer (or Space/R) to stop it**; the default is "loop until stopped", changeable in Settings to play once / 10 s / 30 s; the last 10 seconds flash red
 
 ## Usage
 
@@ -75,4 +75,5 @@ assets/tray.png    Tray icon
 ./timer.exe --shot-settings out.png        # Capture the settings window page
 ./timer.exe --set sound=off                # Toggle switches externally: sound|pin|autostart=on|off
 ./timer.exe --set lang=en                  # Switch language: zh-CN|en|ja|ru
+./timer.exe --set alarm=loop               # Alarm duration: once|10|30|loop
 ```

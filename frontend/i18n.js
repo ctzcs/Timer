@@ -20,6 +20,11 @@ window.TimerI18N = {
     sound: "提示音",
     onTop: "窗口置顶",
     autoStart: "开机自启",
+    alarm: "铃声时长",
+    alarmOnce: "仅播放一次",
+    alarm10: "播放 10 秒",
+    alarm30: "播放 30 秒",
+    alarmLoop: "持续播放，点击停止",
   },
   en: {
     unit: "min",
@@ -38,6 +43,11 @@ window.TimerI18N = {
     sound: "Sound",
     onTop: "Always on Top",
     autoStart: "Launch at Login",
+    alarm: "Alarm Duration",
+    alarmOnce: "Play once",
+    alarm10: "Play for 10 seconds",
+    alarm30: "Play for 30 seconds",
+    alarmLoop: "Loop until clicked",
   },
   ja: {
     unit: "分",
@@ -56,6 +66,11 @@ window.TimerI18N = {
     sound: "サウンド",
     onTop: "最前面に表示",
     autoStart: "サインイン時に起動",
+    alarm: "アラーム時間",
+    alarmOnce: "1回のみ再生",
+    alarm10: "10秒間再生",
+    alarm30: "30秒間再生",
+    alarmLoop: "クリックまで繰り返し再生",
   },
   ru: {
     unit: "мин",
@@ -74,6 +89,11 @@ window.TimerI18N = {
     sound: "Звук",
     onTop: "Поверх всех окон",
     autoStart: "Запуск при входе",
+    alarm: "Длительность сигнала",
+    alarmOnce: "Один раз",
+    alarm10: "10 секунд",
+    alarm30: "30 секунд",
+    alarmLoop: "До ручной остановки",
   },
 };
 

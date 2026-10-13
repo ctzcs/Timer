@@ -72,3 +72,10 @@ select:focus { border-color: #8a8a86; }
 }
 
 .chk span { flex: 1; }
+
+.ver {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #a5a5a2;
+}
