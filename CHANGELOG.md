@@ -3,6 +3,15 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] - 2026-10-13
+
+### Added
+
+- **In-app updates**: a "Check for updates" button in the settings window queries GitHub Releases; when a newer version is found it offers "Download & update", which downloads the release zip, swaps in the new exe after quit and restarts the app automatically. Old files are cleaned up on the next launch, and the single-instance lock is retried briefly so the restarted instance takes over cleanly.
+- The settings window footer shows the running version (served by the app, not hardcoded in the page).
+- `--update` debug flag and the `TIMER_RELEASE_API` environment variable to override the update feed.
+- Fallback update check: when `api.github.com` is rate-limited or blocked (HTTP 403), the latest tag is resolved from the `releases/latest` page redirect and the asset URL is constructed from the release naming convention.
+
 ## [0.1.1] - 2026-10-13
 
 ### Added
@@ -22,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Tray menu checkboxes and labels did not refresh after state changes: MyGo installs a tray-menu snapshot, and `SetChecked`/`SetLabel` only update application/window menus. The menu is now re-installed after every change.
 - The bound service used a separate struct instance, so preferences loaded at startup never reached the frontend (the UI fell back to defaults). The global app instance is now bound directly.
+- The settings window (and some WebView2 states of the main window) could still show a taskbar/Alt+Tab entry despite `SkipTaskbar`: both windows now set `WS_EX_TOOLWINDOW`, so the app lives only in the tray. The settings window also disables minimize (nothing to restore it from) and shows the app icon in Alt+Tab.
 
 ## [0.1.0] - 2026-10-12
 

@@ -12,7 +12,7 @@
 
 - **顶栏（悬停浮现，高频操作）**：自定义时长输入、±1/±5 分钟、开始/暂停、归零、隐藏到托盘
 - **托盘（低频开关 + 入口）**：显示/隐藏、窗口置顶、提示音、开机自启、设置…、退出
-- **设置窗口**（托盘「设置…」打开）：语言切换、到点铃声时长、提示音、窗口置顶、开机自启
+- **设置窗口**（托盘「设置…」打开）：语言切换、到点铃声时长、提示音、窗口置顶、开机自启、软件更新（检查更新 → 自动下载换文件重启）
 
 三处共享同一份状态（Go 为唯一事实源 + `state` 事件广播）：托盘勾选、设置窗口、界面文案任一处变化，其余即时同步。界面语言支持中文 / English / 日本語 / Русский，托盘菜单、窗口标题、设置页、顶栏提示文案全部跟随。
 
@@ -20,7 +20,8 @@
 
 - **无边框透明窗口**，圆角机身 + 柔和投影，默认置顶，不占任务栏
 - 关闭/Esc 隐藏到托盘；**开机自启**写当前用户 Run 注册表项（勾选状态以系统为准）
-- **位置与偏好记忆**：窗口位置（MyGo StateKey）和时长/声音/置顶/语言（`userData/config.json`）跨启动恢复
+- **位置与偏好记忆**：窗口位置（MyGo StateKey）和时长/声音/置顶/语言/铃声时长（`userData/config.json`）跨启动恢复
+- **软件更新**：设置窗口一键检查 GitHub Releases，发现新版本自动下载、换文件并重启；旧文件自动清理
 - 单实例：重复启动把计时器叫到前台
 - 计时基于时间戳差值，系统休眠或节流后仍准确；归零时数字快闪 + 上行铃音循环响，**点击计时器（或空格/R）即停**；时长默认「持续响」，可在设置里改为响一遍 / 10 秒 / 30 秒；最后 10 秒末段闪红
 
@@ -71,9 +72,12 @@ assets/tray.png    托盘图标
 
 ```bash
 ./timer.exe --settings                     # 打开设置窗口
+./timer.exe --update                       # 检查并应用更新
 ./timer.exe --controls --shot out.png      # 顶栏常显并截取主窗口页面
 ./timer.exe --shot-settings out.png        # 截取设置窗口页面
 ./timer.exe --set sound=off                # 外部驱动开关：sound|pin|autostart=on|off
 ./timer.exe --set lang=en                  # 切换语言：zh-CN|en|ja|ru
 ./timer.exe --set alarm=loop               # 到点铃声：once|10|30|loop
 ```
+
+环境变量 `TIMER_RELEASE_API` 可覆盖更新查询地址（默认 `https://api.github.com/repos/ctzcs/Timer/releases/latest`；API 被限流/拦截时自动回退到 `releases/latest` 页面重定向解析）。
