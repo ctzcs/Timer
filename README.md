@@ -51,12 +51,15 @@ go build -ldflags "-X github.com/egoist/mygo.production=1" -o timer.exe .
 go build -trimpath -ldflags "-s -w -H windowsgui -X github.com/egoist/mygo.production=1" -o timer.exe .
 ```
 
+The version lives in `version.go`. Pushing a `v*` tag triggers GitHub Actions, which injects the tag as the version, builds, packages the zip and creates the Release automatically (`.github/workflows/release.yml`) — no manual web upload needed.
+
 The frontend lives in `frontend/` (plain static files, no build step): `i18n.js` is the multilingual dictionary shared by the main and settings windows. To add a language, add it in both Go's `i18n()` (tray/titles) and `i18n.js` (page text). Opening `frontend/index.html` in a browser previews the styling (with a graceful fallback: localStorage instead of the Go bindings).
 
 ### Structure
 
 ```
 main.go            MyGo windows (frameless/transparent/on-top), tray, settings window, preference persistence, state events, single instance
+version.go         App version (rewritten automatically by CI on tag push)
 frontend/
   index.html       Main timer UI
   settings.html    Settings window (language + toggles)

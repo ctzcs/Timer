@@ -51,12 +51,15 @@ go build -ldflags "-X github.com/egoist/mygo.production=1" -o timer.exe .
 go build -trimpath -ldflags "-s -w -H windowsgui -X github.com/egoist/mygo.production=1" -o timer.exe .
 ```
 
+版本号在 `version.go`；推 `v*` 标签会触发 GitHub Actions 自动按标签注入版本号、构建、打包 zip 并创建 Release（`.github/workflows/release.yml`），无需手动去网页上传。
+
 前端在 `frontend/`（纯静态，无构建步骤）：`i18n.js` 是主窗口与设置页共用的多语言字典，加语言时在 Go 的 `i18n()`（托盘/标题）和 `i18n.js`（页面文案）各加一份即可。直接用浏览器打开 `frontend/index.html` 可预览样式（自动降级：localStorage 代替 Go 绑定）。
 
 ### 结构
 
 ```
 main.go            MyGo 窗口（无边框/透明/置顶）、托盘、设置窗口、偏好持久化、state 事件、单实例
+version.go         应用版本号（CI 打 tag 时自动重写注入）
 frontend/
   index.html       计时器主界面
   settings.html    设置窗口（语言 + 开关）

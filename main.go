@@ -26,10 +26,7 @@ import (
 	"github.com/egoist/mygo"
 )
 
-const (
-	appVersion = "0.1.2"
-	githubAPI  = "https://api.github.com/repos/ctzcs/Timer/releases/latest"
-)
+const githubAPI = "https://api.github.com/repos/ctzcs/Timer/releases/latest"
 
 // 上次通过 --update 触发的检查时间（unix 毫秒），用于去抖。
 var lastAutoCheck int64
