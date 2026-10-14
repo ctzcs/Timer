@@ -236,3 +236,33 @@ body {
 /* 隐藏数字输入的上下箭头 */
 .dur input::-webkit-outer-spin-button,
 .dur input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ---- 动态效果（设置里可关） ---- */
+
+/* 开始计时：钟摆式轻晃 */
+@keyframes anim-swing {
+  0%   { transform: rotate(0); }
+  20%  { transform: rotate(-1.6deg); }
+  45%  { transform: rotate(1.4deg); }
+  70%  { transform: rotate(-0.9deg); }
+  100% { transform: rotate(0); }
+}
+
+/* 到点响铃：铃声式抖动 */
+@keyframes anim-ring {
+  0%, 100% { transform: rotate(0); }
+  12%  { transform: rotate(-2deg) translateX(-1px); }
+  28%  { transform: rotate(2deg) translateX(1px); }
+  44%  { transform: rotate(-1.6deg) translateX(-1px); }
+  60%  { transform: rotate(1.6deg) translateX(1px); }
+  78%  { transform: rotate(-0.8deg); }
+  90%  { transform: rotate(0.8deg); }
+}
+
+.device.anim-start { animation: anim-swing 0.55s ease-in-out; }
+.device.anim-finish { animation: anim-ring 0.7s ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .device.anim-start,
+  .device.anim-finish { animation: none; }
+}

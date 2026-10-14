@@ -12,7 +12,7 @@ Built on [MyGo](https://github.com/egoist/mygo) (Go + system WebView2). Pure Go 
 
 - **Top bar (appears on hover, high-frequency actions)**: custom duration input, ±1/±5 minutes, start/pause, reset, hide to tray
 - **Tray (low-frequency toggles + entry point)**: show/hide, always on top, sound, launch at login, Settings…
-- **Settings window** (opened from the tray's "Settings…"): language, alarm duration, sound, always on top, launch at login, software updates (check → download → auto-swap & restart)
+- **Settings window** (opened from the tray's "Settings…"): language, alarm duration, sound, animations, always on top, launch at login, software updates (check → download → auto-swap & restart)
 
 All three share a single piece of state (Go is the single source of truth + `state` event broadcast): wherever the change comes from — tray checkbox, settings window, or UI — the others update instantly. The UI language (中文 / English / 日本語 / Русский) applies everywhere: tray menus, window titles, the settings page, and top-bar hints.
 
@@ -24,6 +24,7 @@ All three share a single piece of state (Go is the single source of truth + `sta
 - **In-app updates**: one-click check against GitHub Releases from the settings window; newer versions are downloaded, swapped in and the app restarts itself; leftovers are cleaned up automatically
 - Single instance: launching again brings the running timer to the front
 - Timing is based on timestamp differences, so it stays accurate after system sleep or throttling; at zero the digits flash and the ascending chime loops — **click the timer (or Space/R) to stop it**; the default is "loop until stopped", changeable in Settings to play once / 10 s / 30 s; the last 10 seconds flash red
+- **Animations**: a pendulum-like sway when the timer starts and a ring-style shake with each chime round at zero — toggle in Settings; automatically disabled when the system asks for reduced motion
 
 ## Usage
 

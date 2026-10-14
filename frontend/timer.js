@@ -14,6 +14,7 @@ const controls = document.getElementById("controls");
 const minsInput = document.getElementById("mins");
 const unitEl = document.getElementById("unit");
 const durWrap = document.getElementById("durWrap");
+const device = document.getElementById("device");
 
 // 段元素
 const segs = [];
@@ -35,6 +36,7 @@ let soundOn = true;
 let lang = "zh-CN";
 let alarmSetting = "loop"; // once / 10 / 30 / loop
 let alarmTimer = null;     // 循环响的定时器
+let animOn = true;         // 动态效果开关
 let beepCtx = null;
 
 // ---- MyGo IPC（带浏览器降级） ----
@@ -82,6 +84,8 @@ function applyState(s) {
   soundOn = s.sound !== false;
   if (!soundOn) stopAlarm(); // 提示音被关掉时立即静音
   if (s.alarm) alarmSetting = s.alarm;
+  animOn = s.anim !== false;
+  if (!animOn) stopDeviceAnim();
   if (s.lang && s.lang !== lang) {
     lang = s.lang;
     applyTexts();
@@ -155,6 +159,31 @@ function playAlarm() {
   } catch (e) { /* 无声环境下忽略 */ }
 }
 
+// ---- 动态效果 ----
+
+let animCleanupTimer = null;
+
+// playDeviceAnim 播放机身动画（"start"=钟摆轻晃，"finish"=铃声抖动）；
+// 关闭动态效果时静默跳过。
+function playDeviceAnim(name) {
+  if (!animOn) return;
+  stopDeviceAnim();
+  void device.offsetWidth; // 强制重排，让同一动画可连续触发
+  device.classList.add("anim-" + name);
+  // 系统“减少动态效果”会让 animation:none 生效，animationend 不触发，这里兜底清理
+  animCleanupTimer = setTimeout(stopDeviceAnim, 900);
+}
+
+function stopDeviceAnim() {
+  device.classList.remove("anim-start", "anim-finish");
+  if (animCleanupTimer) {
+    clearTimeout(animCleanupTimer);
+    animCleanupTimer = null;
+  }
+}
+
+device.addEventListener("animationend", stopDeviceAnim);
+
 // startAlarm 按设置循环播放铃音：once=一遍；10/30=限定秒数；loop=直到点击停止。
 function startAlarm() {
   if (!soundOn) return;
@@ -168,6 +197,7 @@ function startAlarm() {
       stopAlarm();
       return;
     }
+    playDeviceAnim("finish"); // 每轮铃音伴随一次抖动
     playAlarm(); // 一轮约 3.3 秒，间隔略大于一轮保证不重叠
   }, 3400);
 }
@@ -188,6 +218,7 @@ function tick() {
       remainSec = 0;
       running = false;
       finished = true;
+      playDeviceAnim("finish"); // 到点：铃声式抖动
       startAlarm();
     }
     render();
@@ -229,6 +260,7 @@ function toggleRun() {
     if (remainSec <= 0) remainSec = totalSec;
     endTs = Date.now() + remainSec * 1000;
     running = true;
+    playDeviceAnim("start"); // 开始计时：钟摆式轻晃
     try { beepCtx = beepCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch {}
   }
   minsInput.readOnly = running; // 运行中锁定时长

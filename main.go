@@ -49,6 +49,7 @@ type Prefs struct {
 	AlwaysOnTop bool   `json:"alwaysOnTop"`
 	Lang        string `json:"lang"`
 	Alarm       string `json:"alarm"`
+	Anim        bool   `json:"anim"`
 }
 
 // UIState 是发给前端的完整状态。
@@ -60,7 +61,10 @@ type UIState struct {
 	AutoStart   bool   `json:"autoStart"`
 	Lang        string `json:"lang"`
 	Alarm       string `json:"alarm"`
+	Anim        bool   `json:"anim"`
 }
+
+var defaultAnim = true
 
 // UpdateInfo 是检查更新的结果。
 type UpdateInfo struct {
@@ -72,7 +76,7 @@ type UpdateInfo struct {
 }
 
 func defaultPrefs() Prefs {
-	return Prefs{Minutes: 30, Sound: true, AlwaysOnTop: true, Lang: "zh-CN", Alarm: "loop"}
+	return Prefs{Minutes: 30, Sound: true, AlwaysOnTop: true, Lang: "zh-CN", Alarm: "loop", Anim: defaultAnim}
 }
 
 // stateEvent 把状态推给前端（所有窗口），托盘勾选与页面据此保持一致。
@@ -129,7 +133,7 @@ func (t *timerApp) snapshot() UIState {
 	if !alarmModes[alarm] {
 		alarm = "loop"
 	}
-	return UIState{appVersion, p.Minutes, p.Sound, p.AlwaysOnTop, mygo.App.OpenAtLogin(), lang, alarm}
+	return UIState{appVersion, p.Minutes, p.Sound, p.AlwaysOnTop, mygo.App.OpenAtLogin(), lang, alarm, p.Anim}
 }
 
 // syncState 回写托盘菜单文案与勾选、重装快照，并把状态广播给所有窗口。
@@ -266,6 +270,15 @@ func (t *timerApp) SetAlarm(mode string) {
 	}
 	t.mu.Lock()
 	t.prefs.Alarm = mode
+	t.mu.Unlock()
+	t.persistPrefs()
+	t.syncState()
+}
+
+// SetAnim 开关动态效果。
+func (t *timerApp) SetAnim(v bool) {
+	t.mu.Lock()
+	t.prefs.Anim = v
 	t.mu.Unlock()
 	t.persistPrefs()
 	t.syncState()
@@ -576,7 +589,7 @@ func (t *timerApp) openSettings() {
 		Title:          i18n(lang).settings,
 		URL:            "/settings.html",
 		Width:          380,
-		Height:         430,
+		Height:         460,
 		DisableResize:  true,
 		DisableMinimize: true, // 无任务栏按钮，最小化会“失踪”
 		SkipTaskbar:    true,
@@ -628,6 +641,13 @@ func readPrefs() (Prefs, error) {
 	}
 	if !alarmModes[p.Alarm] {
 		p.Alarm = "loop"
+	}
+	// 旧配置文件里没有 anim 字段：区分“缺省”与“明确关闭”，缺省视为开启
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err == nil {
+		if _, ok := raw["anim"]; !ok {
+			p.Anim = defaultAnim
+		}
 	}
 	return p, nil
 }
@@ -758,6 +778,8 @@ func (t *timerApp) applySetFlag(kv string) {
 		t.SetLang(val)
 	case "alarm":
 		t.SetAlarm(val)
+	case "anim":
+		t.SetAnim(val == "on" || val == "true" || val == "1")
 	default:
 		log.Printf("未知开关: %s", name)
 	}

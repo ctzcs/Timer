@@ -8,12 +8,14 @@ const el = {
   title: document.getElementById("t-settings"),
   language: document.getElementById("t-language"),
   sound: document.getElementById("t-sound"),
+  anim: document.getElementById("t-anim"),
   onTop: document.getElementById("t-ontop"),
   autoStart: document.getElementById("t-autostart"),
   alarm: document.getElementById("t-alarm"),
   update: document.getElementById("t-update"),
   lang: document.getElementById("lang"),
   soundChk: document.getElementById("sound"),
+  animChk: document.getElementById("anim"),
   onTopChk: document.getElementById("ontop"),
   autoStartChk: document.getElementById("autostart"),
   alarmSel: document.getElementById("alarm"),
@@ -35,6 +37,7 @@ function applyState(s) {
   el.title.textContent = d.settings;
   el.language.textContent = d.language;
   el.sound.textContent = d.sound;
+  el.anim.textContent = d.anim;
   el.onTop.textContent = d.onTop;
   el.autoStart.textContent = d.autoStart;
   el.alarm.textContent = d.alarm;
@@ -52,6 +55,7 @@ function applyState(s) {
   if (document.activeElement !== el.lang) el.lang.value = currentLang;
   if (document.activeElement !== el.alarmSel) el.alarmSel.value = s.alarm || "loop";
   el.soundChk.checked = s.sound !== false;
+  el.animChk.checked = s.anim !== false;
   el.onTopChk.checked = s.alwaysOnTop === true;
   el.autoStartChk.checked = s.autoStart === true;
   setUpdateUI();
@@ -120,6 +124,8 @@ async function init() {
       window.mygo.call("Timer.SetAlarm", el.alarmSel.value).catch((e) => console.error(e)));
     el.soundChk.addEventListener("change", () =>
       window.mygo.call("Timer.SetSound", el.soundChk.checked).catch((e) => console.error(e)));
+    el.animChk.addEventListener("change", () =>
+      window.mygo.call("Timer.SetAnim", el.animChk.checked).catch((e) => console.error(e)));
     el.onTopChk.addEventListener("change", () =>
       window.mygo.call("Timer.SetAlwaysOnTop", el.onTopChk.checked).catch((e) => console.error(e)));
     el.autoStartChk.addEventListener("change", () =>
