@@ -3,6 +3,13 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.5] - 2026-10-14
+
+### Fixed
+
+- **In-app update restart silently failed**: the new version was downloaded and swapped in, but the app never relaunched itself (`os.StartProcess` without std handles fails on Windows). After updating, users had to reopen the app manually. From this version on, the app restarts itself automatically.
+- The leftover `timer.exe.old` from an update is now removed by a background retry instead of a single attempt that could race the old process shutting down (or a transient antivirus scan).
+
 ## [0.1.4] - 2026-10-14
 
 ### Changed
