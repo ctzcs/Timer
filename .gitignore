@@ -1,4 +1,5 @@
 timer.exe
 .shot-*.png
-/.zcode
 timer-v*.zip
+/.zcode
+__pycache__/

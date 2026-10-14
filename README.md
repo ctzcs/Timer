@@ -6,13 +6,17 @@ A Windows desktop widget styled after physical visual timers: a white rounded bo
 
 Built on [MyGo](https://github.com/egoist/mygo) (Go + system WebView2). Pure Go with no cgo; the release build is a single ~9 MB `timer.exe`, with the frontend embedded as plain static HTML/CSS/JS.
 
-![Preview](assets/tray.png)
+![Preview](assets/preview.png)
+
+![Hover bar](assets/preview-controls.png)
 
 ## Features by layer
 
 - **Top bar (appears on hover, high-frequency actions)**: custom duration input, ±1/±5 minutes, start/pause, reset, hide to tray
 - **Tray (low-frequency toggles + entry point)**: show/hide, always on top, sound, launch at login, Settings…
 - **Settings window** (opened from the tray's "Settings…"): language, alarm duration, sound, animations, always on top, launch at login, software updates (check → download → auto-swap & restart)
+
+![Settings](assets/preview-settings.png)
 
 All three share a single piece of state (Go is the single source of truth + `state` event broadcast): wherever the change comes from — tray checkbox, settings window, or UI — the others update instantly. The UI language (中文 / English / 日本語 / Русский) applies everywhere: tray menus, window titles, the settings page, and top-bar hints.
 
