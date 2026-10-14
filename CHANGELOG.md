@@ -3,12 +3,12 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.3] - 2026-10-13
 
 ### Added
 
 - **Device animations** (toggle in Settings, on by default): a pendulum-like sway when the timer starts, and a ring-style shake with each chime round when the countdown finishes. Automatically disabled when the system requests reduced motion.
-- **CI release automation**: pushing a `v*` tag now builds the Windows exe on GitHub Actions, injects the tag as the app version (`version.go`), packages the zip and publishes the GitHub Release automatically — release notes are pulled from this changelog. (`-ldflags -X` version injection turned out to be ignored by Go 1.27.2, hence the generated-file approach.)
+- **CI release automation**: pushing a `v*` tag builds the Windows exe on GitHub Actions, injects the tag as the app version, packages the zip and publishes the GitHub Release with notes from this changelog.
 
 ## [0.1.2] - 2026-10-13
 
