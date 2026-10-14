@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -304,6 +305,18 @@ func (t *timerApp) Quit() {
 
 // ---- 自动更新 ----
 
+// updateNow 检查并应用更新（--update 调试参数与 TIMER_UPDATE_ON_START 自检共用）。
+func (t *timerApp) updateNow() {
+	info := t.CheckUpdate()
+	log.Printf("check update: latest=%s hasUpdate=%v url=%s msg=%q",
+		info.Latest, info.HasUpdate, info.URL, info.Message)
+	if info.HasUpdate && info.URL != "" {
+		if err := t.ApplyUpdate(info.URL); err != nil {
+			log.Printf("apply update: %v", err)
+		}
+	}
+}
+
 // CheckUpdate 查询 GitHub 最新 Release 并与当前版本比较。
 // 可用环境变量 TIMER_RELEASE_API 覆盖查询地址（测试/镜像）；
 // GitHub API 不可用（被限流/拦截，常见 403）时，回退到 releases/latest
@@ -548,12 +561,16 @@ func swapAndRestart() {
 		_ = os.Rename(old, exe) // 回滚
 		return
 	}
-	// 新实例若撞上尚未释放的单实例锁会稍等重试（见 main），这里直接拉起即可
-	if p, err := os.StartProcess(exe, []string{exe}, &os.ProcAttr{Dir: dir}); err != nil {
+	// 直接拉起新版本。旧进程此刻尚未退出、单实例锁仍在，新实例首次拿锁会失败，
+	// 但 main 里的重试会在旧进程退出后接管（实测该时序可靠）。
+	// 注意别用 os.StartProcess：ProcAttr 不带 Files 时 Windows 上报 invalid argument。
+	cmd := exec.Command(exe)
+	cmd.Dir = dir
+	if err := cmd.Start(); err != nil {
 		log.Printf("update restart: %v", err)
-	} else {
-		_ = p.Release()
+		return
 	}
+	_ = cmd.Process.Release()
 }
 
 // makeToolWindow 给窗口加 WS_EX_TOOLWINDOW 样式：Windows 保证这类窗口
@@ -807,9 +824,20 @@ func main() {
 		return // 已有实例在跑，静默退出
 	}
 
-	// 清理上次自动更新遗留的旧文件
+	// 清理上次自动更新遗留的旧文件。若旧进程尚未完全退出（镜像文件仍被占用），
+	// 删除会 Access denied——后台重试最多约 1 分钟，旧进程退出后即可删掉。
+	// （注意：正在运行的实例自己就运行在 .old 镜像上时，文件无法删除，属正常。）
 	if exe, err := os.Executable(); err == nil {
-		_ = os.Remove(filepath.Join(filepath.Dir(exe), "timer.exe.old"))
+		old := filepath.Join(filepath.Dir(exe), "timer.exe.old")
+		go func() {
+			for i := 0; i < 30; i++ {
+				err := os.Remove(old)
+				if err == nil || os.IsNotExist(err) {
+					return
+				}
+				time.Sleep(2 * time.Second)
+			}
+		}()
 	}
 
 	start, err := readPrefs()
@@ -850,16 +878,7 @@ func main() {
 					break
 				}
 				atomic.StoreInt64(&lastAutoCheck, time.Now().UnixMilli())
-				go func() {
-					info := app.CheckUpdate()
-					log.Printf("check update: latest=%s hasUpdate=%v url=%s msg=%q",
-						info.Latest, info.HasUpdate, info.URL, info.Message)
-					if info.HasUpdate && info.URL != "" {
-						if err := app.ApplyUpdate(info.URL); err != nil {
-							log.Printf("apply update: %v", err)
-						}
-					}
-				}()
+				go app.updateNow()
 			case a == "--set" && i+1 < len(args):
 				app.applySetFlag(args[i+1])
 			case a == "--shot" && i+1 < len(args):
@@ -887,6 +906,10 @@ func main() {
 		createWindow(start)
 		createTray(start)
 		app.syncState() // 初始状态：托盘文案/勾选 + 推给前端，页面就绪后送达
+		// 调试/测试：启动即检查更新（配合 TIMER_RELEASE_API 假更新源）
+		if os.Getenv("TIMER_UPDATE_ON_START") == "1" {
+			go app.updateNow()
+		}
 	})
 	err = mygo.App.Run()
 	// 正常退出后若有待安装的更新：换文件并重启新版本
