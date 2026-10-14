@@ -261,8 +261,3 @@ body {
 
 .device.anim-start { animation: anim-swing 0.55s ease-in-out; }
 .device.anim-finish { animation: anim-ring 0.7s ease-in-out; }
-
-@media (prefers-reduced-motion: reduce) {
-  .device.anim-start,
-  .device.anim-finish { animation: none; }
-}

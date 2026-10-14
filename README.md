@@ -24,7 +24,7 @@ All three share a single piece of state (Go is the single source of truth + `sta
 - **In-app updates**: one-click check against GitHub Releases from the settings window; newer versions are downloaded, swapped in and the app restarts itself; leftovers are cleaned up automatically
 - Single instance: launching again brings the running timer to the front
 - Timing is based on timestamp differences, so it stays accurate after system sleep or throttling; at zero the digits flash and the ascending chime loops — **click the timer (or Space/R) to stop it**; the default is "loop until stopped", changeable in Settings to play once / 10 s / 30 s; the last 10 seconds flash red
-- **Animations**: a pendulum-like sway when the timer starts and a ring-style shake with each chime round at zero — toggle in Settings; automatically disabled when the system asks for reduced motion
+- **Animations**: a pendulum-like sway when the timer starts and a ring-style shake with each chime round at zero — toggle in Settings
 
 ## Usage
 

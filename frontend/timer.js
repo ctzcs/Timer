@@ -170,7 +170,7 @@ function playDeviceAnim(name) {
   stopDeviceAnim();
   void device.offsetWidth; // 强制重排，让同一动画可连续触发
   device.classList.add("anim-" + name);
-  // 系统“减少动态效果”会让 animation:none 生效，animationend 不触发，这里兜底清理
+  // 兜底清理（正常由 animationend 移除动画类）
   animCleanupTimer = setTimeout(stopDeviceAnim, 900);
 }
 
