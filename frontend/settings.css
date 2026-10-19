@@ -1,4 +1,4 @@
-/* 设置窗口：简洁表单卡片 */
+/* 设置窗口：左侧导航 + 右侧分区内容 */
 
 :root { color-scheme: light; }
 
@@ -8,29 +8,77 @@ html, body {
   background: #f3f3f1;
   font-family: system-ui, "Microsoft YaHei", sans-serif;
   user-select: none;
+  overflow: hidden;
 }
 
-body {
+.shell {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 100%;
 }
 
-.card {
-  width: 300px;
-  padding: 20px 24px 24px;
+/* ---- 左侧导航 ---- */
+
+.nav {
+  width: 132px;
+  flex-shrink: 0;
   box-sizing: border-box;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 18px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  background: #ebebe8;
+  border-right: 1px solid #dedeDB;
 }
 
 h1 {
-  margin: 0 0 16px;
-  font-size: 17px;
+  margin: 0 8px 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #26262a;
 }
+
+.nav-item {
+  border: 0;
+  padding: 8px 10px;
+  margin: 1px 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #3c3c40;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-item:hover { background: rgba(0, 0, 0, 0.05); }
+
+.nav-item.active {
+  background: #ffffff;
+  color: #26262a;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.nav-spacer { flex: 1; }
+
+.ver {
+  margin: 0 8px;
+  font-size: 11px;
+  color: #a5a5a2;
+}
+
+/* ---- 右侧内容 ---- */
+
+.panels {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+  box-sizing: border-box;
+}
+
+.panel { display: none; }
+
+.panel.active { display: block; }
 
 .row {
   display: flex;
@@ -88,6 +136,8 @@ select:focus { border-color: #8a8a86; }
 
 .btn:disabled { color: #a5a5a2; cursor: default; }
 
+.btn-wide { width: 100%; margin-top: 6px; }
+
 .upd-status {
   min-height: 16px;
   padding: 0 0 2px;
@@ -98,9 +148,81 @@ select:focus { border-color: #8a8a86; }
 
 .upd-status.err { color: #c04848; }
 
-.ver {
-  margin-top: 12px;
-  text-align: center;
+/* ---- 时间表 ---- */
+
+.group-title {
+  padding: 8px 0 0;
+  font-size: 13px;
+  color: #3c3c40;
+}
+
+.sched-hint {
+  padding: 2px 0 4px;
   font-size: 11px;
   color: #a5a5a2;
 }
+
+.sched-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+}
+
+.sched-row input[type="time"] {
+  border: 1px solid #d5d5d2;
+  border-radius: 6px;
+  padding: 3px 4px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  color: #26262a;
+  outline: none;
+}
+
+.sched-row input[type="time"]:focus { border-color: #8a8a86; }
+
+.sched-row .dash { color: #a5a5a2; }
+
+.sched-row select {
+  min-width: 0;
+  flex: 1;
+  padding: 3px 4px;
+  font-size: 12px;
+}
+
+.sched-row .del {
+  border: 0;
+  padding: 0 4px;
+  background: transparent;
+  color: #a5a5a2;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sched-row .del:hover { color: #c04848; }
+
+/* ---- 循环作息参数 ---- */
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8a8a86;
+  font-size: 12px;
+}
+
+.num input {
+  width: 3em;
+  padding: 4px 6px;
+  border: 1px solid #d5d5d2;
+  border-radius: 7px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  color: #26262a;
+  text-align: right;
+  outline: none;
+}
+
+.num input:focus { border-color: #8a8a86; }

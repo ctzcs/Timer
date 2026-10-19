@@ -11,9 +11,11 @@
     <div class="lcd" id="lcd">
       <span class="digits ghost">88.88</span>
       <span class="digits" id="digits">30.00</span>
+      <span class="phase" id="phase"></span>
     </div>
-    <!-- 顶栏只放高频操作：时长、±、开始暂停、归零、隐藏；开关类设置在托盘/设置窗口 -->
+    <!-- 顶栏只放高频操作：模式、时长、±、开始暂停、跳过、归零、隐藏；开关类设置在托盘/设置窗口 -->
     <div class="controls" id="controls">
+      <button class="ctl" data-act="mode">∞</button>
       <span class="dur" id="durWrap">
         <input id="mins" inputmode="numeric" maxlength="2" value="30" /><span id="unit">分</span>
       </span>
@@ -21,6 +23,7 @@
       <button class="ctl" data-act="m5">−5</button>
       <button class="ctl" data-act="m1">−1</button>
       <button class="ctl ctl-main" data-act="toggle">▶</button>
+      <button class="ctl" data-act="skip">»</button>
       <button class="ctl" data-act="p1">+1</button>
       <button class="ctl" data-act="p5">+5</button>
       <span class="ctl-gap"></span>

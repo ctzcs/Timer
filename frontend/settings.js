@@ -1,4 +1,4 @@
-// 设置窗口：语言 + 提示音/置顶/自启。
+// 设置窗口：语言 + 计时模式/循环作息/课表 + 提示音/置顶/自启。
 // 状态以 Go 为唯一事实源：任何一处改动后 Go 广播 state 事件，本页据此重渲染。
 "use strict";
 
@@ -22,16 +22,30 @@ const el = {
   updBtn: document.getElementById("upd"),
   updStatus: document.getElementById("upd-status"),
   ver: document.querySelector(".ver"),
+  navGeneral: document.getElementById("t-nav-general"),
+  navTimetable: document.getElementById("t-nav-timetable"),
+  // 循环作息
+  modeLabel: document.getElementById("t-mode"),
+  cycleWorkLabel: document.getElementById("t-cycle-work"),
+  cycleRestLabel: document.getElementById("t-cycle-rest"),
+  cycleAutoLabel: document.getElementById("t-cycle-auto"),
+  minWork: document.getElementById("t-min-work"),
+  minRest: document.getElementById("t-min-rest"),
+  schedTitle: document.getElementById("t-sched"),
+  schedHint: document.getElementById("t-sched-hint"),
+  modeSel: document.getElementById("mode"),
+  cycleWork: document.getElementById("cycleWork"),
+  cycleRest: document.getElementById("cycleRest"),
+  cycleAutoChk: document.getElementById("cycleAuto"),
+  schedList: document.getElementById("schedList"),
+  schedAdd: document.getElementById("schedAdd"),
 };
 
 let currentLang = "zh-CN";
 let updateState = "idle"; // idle / checking / found / downloading
 let pendingUpdate = null; // 检查到的更新（含 url、latest）
 
-function applyState(s) {
-  if (!s) return;
-  currentLang = s.lang || "zh-CN";
-  const d = window.TimerI18N.pick(currentLang);
+function applyTexts(d) {
   document.title = d.settings;
   document.documentElement.lang = currentLang;
   el.title.textContent = d.settings;
@@ -42,7 +56,23 @@ function applyState(s) {
   el.autoStart.textContent = d.autoStart;
   el.alarm.textContent = d.alarm;
   el.update.textContent = d.update;
-  el.ver.textContent = "v" + (s.version || "0.1.2");
+  // 循环作息
+  el.modeLabel.textContent = d.modeLabel;
+  el.navGeneral.textContent = d.navGeneral;
+  el.navTimetable.textContent = d.navTimetable;
+  el.cycleWorkLabel.textContent = d.cycleWork;
+  el.cycleRestLabel.textContent = d.cycleRest;
+  el.cycleAutoLabel.textContent = d.cycleAuto;
+  el.minWork.textContent = d.unit;
+  el.minRest.textContent = d.unit;
+  el.schedTitle.textContent = d.schedTitle;
+  el.schedHint.textContent = d.schedEmpty;
+  el.schedAdd.textContent = d.schedAdd;
+  // 模式选项文案随语言刷新（value 不变）
+  for (const opt of el.modeSel.options) {
+    if (opt.value === "countdown") opt.textContent = d.modeCountdown;
+    else if (opt.value === "cycle") opt.textContent = d.modeCycle;
+  }
   // 铃声时长选项文案随语言刷新（value 不变）
   for (const opt of el.alarmSel.options) {
     if (opt.value === "once") opt.textContent = d.alarmOnce;
@@ -50,15 +80,116 @@ function applyState(s) {
     else if (opt.value === "30") opt.textContent = d.alarm30;
     else if (opt.value === "loop") opt.textContent = d.alarmLoop;
   }
+}
+
+function applyState(s) {
+  if (!s) return;
+  currentLang = s.lang || "zh-CN";
+  const d = window.TimerI18N.pick(currentLang);
+  applyTexts(d);
+  el.ver.textContent = "v" + (s.version || "0.1.2");
 
   // 避免回显覆盖正在进行的交互
   if (document.activeElement !== el.lang) el.lang.value = currentLang;
   if (document.activeElement !== el.alarmSel) el.alarmSel.value = s.alarm || "loop";
+  if (document.activeElement !== el.modeSel) el.modeSel.value = s.mode === "cycle" ? "cycle" : "countdown";
+  if (document.activeElement !== el.cycleWork) el.cycleWork.value = s.cycleWork > 0 ? s.cycleWork : 45;
+  if (document.activeElement !== el.cycleRest) el.cycleRest.value = s.cycleRest > 0 ? s.cycleRest : 10;
+  el.cycleAutoChk.checked = s.cycleAuto !== false;
   el.soundChk.checked = s.sound !== false;
   el.animChk.checked = s.anim !== false;
   el.onTopChk.checked = s.alwaysOnTop === true;
   el.autoStartChk.checked = s.autoStart === true;
+
+  // 课表编辑中（任一输入框持有焦点）不重建列表，等失焦后由下一次广播刷新
+  if (!el.schedList.contains(document.activeElement)) {
+    renderSchedule(Array.isArray(s.schedule) ? s.schedule : []);
+  }
   setUpdateUI();
+}
+
+// ---- 每日课表编辑器 ----
+
+// renderSchedule 按数据重建课表行。
+function renderSchedule(rules) {
+  el.schedList.textContent = "";
+  for (const r of rules) el.schedList.appendChild(makeSchedRow(r));
+  updateSchedHint();
+}
+
+// makeSchedRow 生成一行：[开始] – [结束] [类型] [删除]。任何改动立即整表保存。
+function makeSchedRow(rule) {
+  const d = window.TimerI18N.pick(currentLang);
+  const row = document.createElement("div");
+  row.className = "sched-row";
+
+  const start = document.createElement("input");
+  start.type = "time";
+  start.value = rule.start || "09:00";
+  const dash = document.createElement("span");
+  dash.className = "dash";
+  dash.textContent = "–";
+  const end = document.createElement("input");
+  end.type = "time";
+  end.value = rule.end || "12:00";
+
+  const type = document.createElement("select");
+  for (const [v, key] of [["cycle", "schedCycle"], ["break", "schedBreak"]]) {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = d[key];
+    type.appendChild(opt);
+  }
+  type.value = rule.type === "break" ? "break" : "cycle";
+
+  const del = document.createElement("button");
+  del.className = "del";
+  del.textContent = "✕";
+  del.title = "✕";
+  del.addEventListener("click", () => {
+    row.remove();
+    commitSchedule();
+  });
+
+  for (const input of [start, end, type]) {
+    input.addEventListener("change", commitSchedule);
+  }
+  row.append(start, dash, end, type, del);
+  return row;
+}
+
+// commitSchedule 从 DOM 收集课表整表保存；非法条目由 Go 侧统一剔除。
+function commitSchedule() {
+  const rules = [];
+  for (const row of el.schedList.children) {
+    const times = row.querySelectorAll("input");
+    const type = row.querySelector("select");
+    rules.push({ start: times[0].value, end: times[1].value, type: type.value });
+  }
+  updateSchedHint();
+  if (inMyGo) {
+    window.mygo.call("Timer.SaveSchedule", rules).catch((e) => console.error(e));
+  } else {
+    const s = lsLoad();
+    s.schedule = rules;
+    localStorage.setItem("timer-state", JSON.stringify(s));
+  }
+}
+
+function updateSchedHint() {
+  el.schedHint.style.display = el.schedList.children.length ? "none" : "";
+}
+
+// ---- 导航分区 ----
+
+// switchPanel 切换左侧导航选中项与右侧显示的分区。
+function switchPanel(name) {
+  for (const item of document.querySelectorAll(".nav-item")) {
+    item.classList.toggle("active", item.dataset.panel === name);
+  }
+  for (const panel of document.querySelectorAll(".panel")) {
+    panel.classList.toggle("active", panel.id === "panel-" + name);
+  }
 }
 
 // ---- 检查更新 ----
@@ -116,12 +247,30 @@ async function onCheckUpdate() {
   }
 }
 
+// 浏览器调试降级用的本地状态
+function lsLoad() {
+  try { return JSON.parse(localStorage.getItem("timer-state")) || {}; }
+  catch { return {}; }
+}
+
 async function init() {
+  for (const item of document.querySelectorAll(".nav-item")) {
+    item.addEventListener("click", () => switchPanel(item.dataset.panel));
+  }
   if (inMyGo) {
     el.lang.addEventListener("change", () =>
       window.mygo.call("Timer.SetLang", el.lang.value).catch((e) => console.error(e)));
     el.alarmSel.addEventListener("change", () =>
       window.mygo.call("Timer.SetAlarm", el.alarmSel.value).catch((e) => console.error(e)));
+    el.modeSel.addEventListener("change", () =>
+      window.mygo.call("Timer.SetMode", el.modeSel.value).catch((e) => console.error(e)));
+    el.cycleWork.addEventListener("change", commitCycle);
+    el.cycleRest.addEventListener("change", commitCycle);
+    el.cycleAutoChk.addEventListener("change", commitCycle);
+    el.schedAdd.addEventListener("click", () => {
+      el.schedList.appendChild(makeSchedRow({ start: "09:00", end: "12:00", type: "cycle" }));
+      commitSchedule();
+    });
     el.soundChk.addEventListener("change", () =>
       window.mygo.call("Timer.SetSound", el.soundChk.checked).catch((e) => console.error(e)));
     el.animChk.addEventListener("change", () =>
@@ -136,7 +285,30 @@ async function init() {
     }
     applyState(await window.mygo.call("Timer.LoadSettings"));
   } else {
-    applyState({ version: "0.1.2", lang: "zh-CN", sound: true, alwaysOnTop: true, autoStart: false, alarm: "loop" });
+    // 浏览器调试：给一份带课表的样例，便于单独调样式
+    applyState({
+      version: "0.2.0", lang: "zh-CN", sound: true, alwaysOnTop: true, autoStart: false,
+      alarm: "loop", mode: "cycle", cycleWork: 45, cycleRest: 10, cycleAuto: true,
+      schedule: [
+        { start: "09:00", end: "12:00", type: "cycle" },
+        { start: "12:00", end: "13:30", type: "break" },
+        { start: "13:30", end: "18:30", type: "cycle" },
+      ],
+    });
+  }
+}
+
+// commitCycle 保存工作/休息时长与自动切换开关。
+function commitCycle() {
+  const work = parseInt(el.cycleWork.value, 10);
+  const rest = parseInt(el.cycleRest.value, 10);
+  if (inMyGo) {
+    window.mygo.call("Timer.SaveCycle", work, rest, el.cycleAutoChk.checked)
+      .catch((e) => console.error(e));
+  } else {
+    const s = lsLoad();
+    s.cycleWork = work; s.cycleRest = rest; s.cycleAuto = el.cycleAutoChk.checked;
+    localStorage.setItem("timer-state", JSON.stringify(s));
   }
 }
 

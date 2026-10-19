@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,34 +39,22 @@ var frontendFS embed.FS
 //go:embed assets/tray.png
 var trayIcon []byte
 
-var langs = map[string]bool{"zh-CN": true, "en": true, "ja": true, "ru": true}
-
-// 到点铃声时长：once=响一遍，数字=秒数，loop=持续响直到点击。
-var alarmModes = map[string]bool{"once": true, "10": true, "30": true, "loop": true}
-
-// Prefs 是持久化到 config.json 的用户偏好（开机自启读系统，不落盘）。
-type Prefs struct {
-	Minutes     int    `json:"minutes"`
-	Sound       bool   `json:"sound"`
-	AlwaysOnTop bool   `json:"alwaysOnTop"`
-	Lang        string `json:"lang"`
-	Alarm       string `json:"alarm"`
-	Anim        bool   `json:"anim"`
-}
-
 // UIState 是发给前端的完整状态。
 type UIState struct {
-	Version     string `json:"version"`
-	Minutes     int    `json:"minutes"`
-	Sound       bool   `json:"sound"`
-	AlwaysOnTop bool   `json:"alwaysOnTop"`
-	AutoStart   bool   `json:"autoStart"`
-	Lang        string `json:"lang"`
-	Alarm       string `json:"alarm"`
-	Anim        bool   `json:"anim"`
+	Version     string      `json:"version"`
+	Minutes     int         `json:"minutes"`
+	Sound       bool        `json:"sound"`
+	AlwaysOnTop bool        `json:"alwaysOnTop"`
+	AutoStart   bool        `json:"autoStart"`
+	Lang        string      `json:"lang"`
+	Alarm       string      `json:"alarm"`
+	Anim        bool        `json:"anim"`
+	Mode        string      `json:"mode"`
+	CycleWork   int         `json:"cycleWork"`
+	CycleRest   int         `json:"cycleRest"`
+	CycleAuto   bool        `json:"cycleAuto"`
+	Schedule    []CycleRule `json:"schedule"`
 }
-
-var defaultAnim = true
 
 // UpdateInfo 是检查更新的结果。
 type UpdateInfo struct {
@@ -74,10 +63,6 @@ type UpdateInfo struct {
 	HasUpdate bool   `json:"hasUpdate"`
 	URL       string `json:"url"`
 	Message   string `json:"message"` // 检查失败的原因，空表示成功
-}
-
-func defaultPrefs() Prefs {
-	return Prefs{Minutes: 30, Sound: true, AlwaysOnTop: true, Lang: "zh-CN", Alarm: "loop", Anim: defaultAnim}
 }
 
 // stateEvent 把状态推给前端（所有窗口），托盘勾选与页面据此保持一致。
@@ -134,7 +119,25 @@ func (t *timerApp) snapshot() UIState {
 	if !alarmModes[alarm] {
 		alarm = "loop"
 	}
-	return UIState{appVersion, p.Minutes, p.Sound, p.AlwaysOnTop, mygo.App.OpenAtLogin(), lang, alarm, p.Anim}
+	mode := p.Mode
+	if !cycleModes[mode] {
+		mode = modeCountdown
+	}
+	return UIState{
+		Version:     appVersion,
+		Minutes:     p.Minutes,
+		Sound:       p.Sound,
+		AlwaysOnTop: p.AlwaysOnTop,
+		AutoStart:   mygo.App.OpenAtLogin(),
+		Lang:        lang,
+		Alarm:       alarm,
+		Anim:        p.Anim,
+		Mode:        mode,
+		CycleWork:   p.CycleWork,
+		CycleRest:   p.CycleRest,
+		CycleAuto:   p.CycleAuto,
+		Schedule:    p.Schedule,
+	}
 }
 
 // syncState 回写托盘菜单文案与勾选、重装快照，并把状态广播给所有窗口。
@@ -280,6 +283,49 @@ func (t *timerApp) SetAlarm(mode string) {
 func (t *timerApp) SetAnim(v bool) {
 	t.mu.Lock()
 	t.prefs.Anim = v
+	t.mu.Unlock()
+	t.persistPrefs()
+	t.syncState()
+}
+
+// SetMode 切换计时模式（countdown / cycle）。
+func (t *timerApp) SetMode(mode string) {
+	if !cycleModes[mode] {
+		return
+	}
+	t.mu.Lock()
+	t.prefs.Mode = mode
+	t.mu.Unlock()
+	t.persistPrefs()
+	t.syncState()
+}
+
+// SaveCycle 保存循环作息参数（时长分钟 1–99，出界的保持原值）。
+func (t *timerApp) SaveCycle(work, rest int, auto bool) {
+	t.saveCyclePartial(&work, &rest, &auto)
+}
+
+// saveCyclePartial 只更新给到的字段（nil 表示不动），一次改动广播一次状态。
+func (t *timerApp) saveCyclePartial(work, rest *int, auto *bool) {
+	t.mu.Lock()
+	if work != nil && *work >= 1 && *work <= 99 {
+		t.prefs.CycleWork = *work
+	}
+	if rest != nil && *rest >= 1 && *rest <= 99 {
+		t.prefs.CycleRest = *rest
+	}
+	if auto != nil {
+		t.prefs.CycleAuto = *auto
+	}
+	t.mu.Unlock()
+	t.persistPrefs()
+	t.syncState()
+}
+
+// SaveSchedule 整表保存每日课表；非法条目剔除后按开始时间排序落盘。
+func (t *timerApp) SaveSchedule(rules []CycleRule) {
+	t.mu.Lock()
+	t.prefs.Schedule = sanitizeSchedule(rules)
 	t.mu.Unlock()
 	t.persistPrefs()
 	t.syncState()
@@ -605,9 +651,8 @@ func (t *timerApp) openSettings() {
 	opts := mygo.WindowOptions{
 		Title:          i18n(lang).settings,
 		URL:            "/settings.html",
-		Width:          380,
-		Height:         460,
-		DisableResize:  true,
+		Width:          620,
+		Height:         480, // 左导航右内容的两栏布局；窗口可拉伸，右栏内部滚动
 		DisableMinimize: true, // 无任务栏按钮，最小化会“失踪”
 		SkipTaskbar:    true,
 	}
@@ -628,61 +673,7 @@ func (t *timerApp) openSettings() {
 }
 
 // ---- 偏好读写 ----
-
-func prefsPath() string {
-	dir, err := mygo.App.Path(mygo.PathUserData)
-	if err != nil || dir == "" {
-		return ""
-	}
-	return filepath.Join(dir, "config.json")
-}
-
-func readPrefs() (Prefs, error) {
-	p := defaultPrefs()
-	path := prefsPath()
-	if path == "" {
-		return p, os.ErrNotExist
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return p, err
-	}
-	if err := json.Unmarshal(data, &p); err != nil {
-		return defaultPrefs(), err
-	}
-	if p.Minutes < 1 || p.Minutes > 99 {
-		p.Minutes = 30
-	}
-	if !langs[p.Lang] {
-		p.Lang = "zh-CN"
-	}
-	if !alarmModes[p.Alarm] {
-		p.Alarm = "loop"
-	}
-	// 旧配置文件里没有 anim 字段：区分“缺省”与“明确关闭”，缺省视为开启
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err == nil {
-		if _, ok := raw["anim"]; !ok {
-			p.Anim = defaultAnim
-		}
-	}
-	return p, nil
-}
-
-func writePrefs(p Prefs) error {
-	path := prefsPath()
-	if path == "" {
-		return os.ErrInvalid
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0o644)
-}
+// （实现见 prefs.go：config.json 读写 + 结构版本迁移）
 
 // ---- 窗口与托盘 ----
 
@@ -797,9 +788,54 @@ func (t *timerApp) applySetFlag(kv string) {
 		t.SetAlarm(val)
 	case "anim":
 		t.SetAnim(val == "on" || val == "true" || val == "1")
+	case "mode":
+		t.SetMode(val)
+	case "cyclework", "cyclerest":
+		// 只改一个字段，另一个保持当前值
+		n, err := strconv.Atoi(val)
+		if err != nil {
+			return
+		}
+		t.mu.Lock()
+		work, rest, auto := t.prefs.CycleWork, t.prefs.CycleRest, t.prefs.CycleAuto
+		t.mu.Unlock()
+		if name == "cyclework" {
+			t.saveCyclePartial(&n, &rest, &auto)
+		} else {
+			t.saveCyclePartial(&work, &n, &auto)
+		}
+	case "cycleauto":
+		t.mu.Lock()
+		work, rest := t.prefs.CycleWork, t.prefs.CycleRest
+		t.mu.Unlock()
+		t.saveCyclePartial(&work, &rest, boolPtr(val == "on" || val == "true" || val == "1"))
+	case "schedule":
+		// 调试用：--set schedule=09:00-12:00:cycle,12:00-13:30:break
+		t.SaveSchedule(parseScheduleFlag(val))
 	default:
 		log.Printf("未知开关: %s", name)
 	}
+}
+
+func boolPtr(v bool) *bool { return &v }
+
+// parseScheduleFlag 解析 "HH:MM-HH:MM:cycle,HH:MM-HH:MM:break" 形式的课表
+// （调试/自动化用，非法条目由 SaveSchedule 统一剔除）。
+func parseScheduleFlag(s string) []CycleRule {
+	var rules []CycleRule
+	for _, part := range strings.Split(s, ",") {
+		i := strings.LastIndex(part, ":") // 时间里也有冒号，取最后一个
+		if i < 0 {
+			continue
+		}
+		typ, times := part[i+1:], part[:i]
+		se := strings.SplitN(times, "-", 2)
+		if len(se) != 2 {
+			continue
+		}
+		rules = append(rules, CycleRule{Start: strings.TrimSpace(se[0]), End: strings.TrimSpace(se[1]), Type: typ})
+	}
+	return rules
 }
 
 func main() {

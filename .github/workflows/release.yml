@@ -30,6 +30,12 @@ jobs:
           var appVersion = "$VERSION"
           EOF
 
+      - name: Vet and test
+        shell: bash
+        run: |
+          go vet ./...
+          go test ./...
+
       - name: Build
         shell: bash
         run: |

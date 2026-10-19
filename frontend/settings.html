@@ -6,57 +6,99 @@
   <link rel="stylesheet" href="./settings.css" />
 </head>
 <body>
-  <div class="card">
-    <h1 id="t-settings">设置</h1>
+  <div class="shell">
+    <!-- 左侧：导航列 -->
+    <nav class="nav">
+      <h1 id="t-settings">设置</h1>
+      <button class="nav-item active" data-panel="general" id="t-nav-general"></button>
+      <button class="nav-item" data-panel="timetable" id="t-nav-timetable"></button>
+      <div class="nav-spacer"></div>
+      <div class="ver">v</div>
+    </nav>
 
-    <div class="row">
-      <label id="t-language" for="lang">语言</label>
-      <select id="lang">
-        <option value="zh-CN">简体中文</option>
-        <option value="en">English</option>
-        <option value="ja">日本語</option>
-        <option value="ru">Русский</option>
-      </select>
-    </div>
+    <!-- 右侧：当前分区的具体设置 -->
+    <main class="panels">
+      <section class="panel active" id="panel-general">
+        <div class="row">
+          <label id="t-language" for="lang">语言</label>
+          <select id="lang">
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="ru">Русский</option>
+          </select>
+        </div>
 
-    <div class="rule"></div>
+        <div class="rule"></div>
 
-    <div class="row">
-      <label id="t-alarm" for="alarm">到点铃声</label>
-      <select id="alarm">
-        <option value="once"></option>
-        <option value="10"></option>
-        <option value="30"></option>
-        <option value="loop"></option>
-      </select>
-    </div>
+        <div class="row">
+          <label id="t-alarm" for="alarm">到点铃声</label>
+          <select id="alarm">
+            <option value="once"></option>
+            <option value="10"></option>
+            <option value="30"></option>
+            <option value="loop"></option>
+          </select>
+        </div>
 
-    <label class="row chk">
-      <input type="checkbox" id="sound" />
-      <span id="t-sound">提示音</span>
-    </label>
-    <label class="row chk">
-      <input type="checkbox" id="anim" />
-      <span id="t-anim">动态效果</span>
-    </label>
-    <label class="row chk">
-      <input type="checkbox" id="ontop" />
-      <span id="t-ontop">窗口置顶</span>
-    </label>
-    <label class="row chk">
-      <input type="checkbox" id="autostart" />
-      <span id="t-autostart">开机自启</span>
-    </label>
+        <label class="row chk">
+          <input type="checkbox" id="sound" />
+          <span id="t-sound">提示音</span>
+        </label>
+        <label class="row chk">
+          <input type="checkbox" id="anim" />
+          <span id="t-anim">动态效果</span>
+        </label>
+        <label class="row chk">
+          <input type="checkbox" id="ontop" />
+          <span id="t-ontop">窗口置顶</span>
+        </label>
+        <label class="row chk">
+          <input type="checkbox" id="autostart" />
+          <span id="t-autostart">开机自启</span>
+        </label>
 
-    <div class="rule"></div>
+        <div class="rule"></div>
 
-    <div class="row">
-      <label id="t-update">软件更新</label>
-      <button id="upd" class="btn">检查更新</button>
-    </div>
-    <div id="upd-status" class="upd-status"></div>
+        <div class="row">
+          <label id="t-update">软件更新</label>
+          <button id="upd" class="btn">检查更新</button>
+        </div>
+        <div id="upd-status" class="upd-status"></div>
+      </section>
 
-    <div class="ver">v</div>
+      <section class="panel" id="panel-timetable">
+        <div class="row">
+          <label id="t-mode" for="mode">计时模式</label>
+          <select id="mode">
+            <option value="countdown"></option>
+            <option value="cycle"></option>
+          </select>
+        </div>
+
+        <div class="rule"></div>
+
+        <div class="row">
+          <label id="t-cycle-work" for="cycleWork">工作时长</label>
+          <span class="num"><input type="number" id="cycleWork" min="1" max="99" maxlength="2" /><span id="t-min-work">分</span></span>
+        </div>
+        <div class="row">
+          <label id="t-cycle-rest" for="cycleRest">休息时长</label>
+          <span class="num"><input type="number" id="cycleRest" min="1" max="99" maxlength="2" /><span id="t-min-rest">分</span></span>
+        </div>
+        <label class="row chk">
+          <input type="checkbox" id="cycleAuto" />
+          <span id="t-cycle-auto">自动切换下一段</span>
+        </label>
+
+        <div class="rule"></div>
+
+        <div class="group-title" id="t-sched">每日时间表</div>
+        <div class="sched-hint" id="t-sched-hint"></div>
+        <div id="schedList"></div>
+        <button id="schedAdd" class="btn btn-wide"></button>
+      </section>
+    </main>
   </div>
   <script src="./i18n.js"></script>
   <script src="./settings.js"></script>

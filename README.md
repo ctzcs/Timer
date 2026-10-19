@@ -12,13 +12,24 @@ Built on [MyGo](https://github.com/egoist/mygo) (Go + system WebView2). Pure Go 
 
 ## Features by layer
 
-- **Top bar (appears on hover, high-frequency actions)**: custom duration input, ±1/±5 minutes, start/pause, reset, hide to tray
+- **Top bar (appears on hover, high-frequency actions)**: mode toggle (∞/1×), custom duration input, ±1/±5 minutes, start/pause, skip phase (cycle mode), reset, hide to tray
 - **Tray (low-frequency toggles + entry point)**: show/hide, always on top, sound, launch at login, Settings…
-- **Settings window** (opened from the tray's "Settings…"): language, alarm duration, sound, animations, always on top, launch at login, software updates (check → download → auto-swap & restart)
+- **Settings window** (opened from the tray's "Settings…"): two-pane layout with a sidebar — **General** (language, alarm duration, sound, animations, always on top, launch at login, software updates with one-click check → download → auto-swap & restart) and **Timetable** (timer mode, work/break lengths, daily timetable editor)
 
 ![Settings](assets/preview-settings.png)
 
-All three share a single piece of state (Go is the single source of truth + `state` event broadcast): wherever the change comes from — tray checkbox, settings window, or UI — the others update instantly. The UI language (中文 / English / 日本語 / Русский) applies everywhere: tray menus, window titles, the settings page, and top-bar hints.
+### Daily cycle mode (∞)
+
+Like a school timetable: in Settings → **Timetable** you lay out your own day as time slots — **cycle** slots alternate work/break (45 + 10 min by default, both configurable), **break** slots are plain rest (lunch, a nap, anything). Bells ring at clock times, not at "N minutes after you started":
+
+- Click start at any time and the timer joins the slot in progress (09:20 start → 25 minutes left of the 09:00 block). Restart the app mid-day and it picks up where the day is
+- Gaps between slots count down as "break" until the next slot begins; starting after the last slot ends the day with a "day complete" chime
+- Rest phases light the segment bar green; the LCD badge shows work / break / day complete; `»` or `S` skips to the next phase (it still ends at its scheduled clock time)
+- With no slots configured the mode degrades to an endless work/break loop until reset
+- Auto-advance (on by default) rings one chime and moves on; turn it off to require a click after each phase
+- The timetable is stored in `config.json` with a schema version, so it survives app upgrades
+
+All three layers share a single piece of state (Go is the single source of truth + `state` event broadcast): wherever the change comes from — tray checkbox, settings window, or UI — the others update instantly. The UI language (中文 / English / 日本語 / Русский) applies everywhere: tray menus, window titles, the settings page, and top-bar hints.
 
 ## Other details
 
@@ -35,12 +46,13 @@ All three share a single piece of state (Go is the single source of truth + `sta
 | Action | Effect |
 | --- | --- |
 | Drag the body | Move the window |
-| Click the bar / LCD | Start / pause |
+| Click the bar / LCD | Start / pause (cycle mode: confirm next phase / dismiss "day complete") |
 | Double-click the LCD | Reset |
-| Mouse wheel over the bar | ±1 minute |
-| Top-bar input | Custom duration (1–99 min), Enter to confirm |
+| Mouse wheel over the bar | ±1 minute (countdown mode) |
+| Top-bar input | Custom duration (1–99 min), Enter to confirm (countdown mode) |
 | Space / R | Start-pause / reset |
-| ↑ / ↓ (Shift) | ±1 (±5) minute |
+| S | Skip current phase (cycle mode) |
+| ↑ / ↓ (Shift) | ±1 (±5) minute (countdown mode) |
 | Esc | Hide to tray |
 
 ## Development
@@ -63,15 +75,17 @@ The frontend lives in `frontend/` (plain static files, no build step): `i18n.js`
 ### Structure
 
 ```
-main.go            MyGo windows (frameless/transparent/on-top), tray, settings window, preference persistence, state events, single instance
+main.go            MyGo windows (frameless/transparent/on-top), tray, settings window, state events, single instance
+prefs.go           Preference persistence: config.json read/write, schema-version migration chain, validation
+prefs_test.go      Tests for the persistence layer (legacy configs, migration, clamping)
 version.go         App version (rewritten automatically by CI on tag push)
 frontend/
   index.html       Main timer UI
-  settings.html    Settings window (language + toggles)
+  settings.html    Settings window (General / Timetable two-pane layout)
   i18n.js          Multilingual dictionary (Chinese/English/Japanese/Russian)
   style.css        Body / bar / LCD / controls styling
   settings.css     Settings window styling
-  timer.js         Timer logic & interactions, state sync
+  timer.js         Timer logic & interactions, schedule engine, state sync
   fonts/           DSEG7 Classic font (MIT)
 assets/tray.png    Tray icon
 ```
@@ -86,6 +100,9 @@ assets/tray.png    Tray icon
 ./timer.exe --set sound=off                # Toggle switches externally: sound|pin|autostart=on|off
 ./timer.exe --set lang=en                  # Switch language: zh-CN|en|ja|ru
 ./timer.exe --set alarm=loop               # Alarm duration: once|10|30|loop
+./timer.exe --set mode=cycle               # Timer mode: countdown|cycle
+./timer.exe --set cyclework=1              # Cycle work length in minutes (cyclerest likewise)
+./timer.exe --set schedule=09:00-12:00:cycle,12:00-13:30:break   # Inject a schedule for testing
 ```
 
 Set the `TIMER_RELEASE_API` environment variable to override the update feed (defaults to `https://api.github.com/repos/ctzcs/Timer/releases/latest`; when the API is rate-limited or blocked it automatically falls back to resolving the `releases/latest` redirect).

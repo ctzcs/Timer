@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-10-20
+
+### Added
+
+- **Daily cycle mode** (∞ button in the top bar, or "Timer Mode" in Settings): like a school timetable, you lay out your day in Settings as time slots — **cycle** slots alternate work/break (default 45 + 10 min, configurable) and **break** slots are plain rest (lunch, a nap). Everything is anchored to clock times: click start at any moment and the timer joins the slot in progress; gaps count down as break; starting after the last slot ends the day with a "day complete" chime. Rest phases light the segment bar green, an LCD badge shows work / break / day complete, and `»` / `S` skips to the next phase while keeping its scheduled end time. With no slots configured the mode is an endless work/break loop. Auto-advance (on by default) rings once and moves on; turn it off to confirm each phase with a click.
+- **Schedule persistence with schema versioning**: `config.json` now carries a `version` field with a migration chain, so upgrades never destroy user data (0.1.x configs migrate transparently); corrupt config files are backed up as `config.json.bak` instead of being overwritten.
+- New debug flags: `--set mode=countdown|cycle`, `--set cyclework=1`, `--set cyclerest=1`, `--set schedule=09:00-12:00:cycle,12:00-13:30:break`.
+- The settings window now uses a two-pane layout — a sidebar with "General" and "Timetable" sections instead of one long form — and is resizable with scrollable content. The daily schedule UI is called "Timetable" throughout.
+- The release CI runs `go vet` + `go test` before building.
+
 ## [0.1.5] - 2026-10-14
 
 ### Fixed

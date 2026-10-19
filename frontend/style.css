@@ -99,6 +99,14 @@ body {
   background: linear-gradient(180deg, #8a4040 0%, #6e2f2f 100%);
 }
 
+/* 循环作息的休息相位：段条点亮为绿色，与工作相位的深色区分 */
+.bar.rest .seg.on {
+  background: linear-gradient(180deg, #4a8a5c 0%, #35704a 45%, #245c3c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 1px rgba(0, 0, 0, 0.4);
+}
+
 /* ---- 液晶屏 ---- */
 
 .lcd {
@@ -139,6 +147,25 @@ body {
 
 @keyframes blink-slow { 50% { opacity: 0.25; } }
 @keyframes blink-fast { 50% { opacity: 0.1; } }
+
+/* 循环作息的相位徽标：LCD 顶部小字（工作/休息/今日完成） */
+.phase {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 2px;
+  color: rgba(30, 36, 26, 0.55);
+  pointer-events: none;
+}
+
+.phase:empty { display: none; }
+
+/* 有徽标时数字稍下移，避免和小字打架 */
+.lcd.phased .digits { transform: translateY(4px); }
 
 /* ---- 悬停控制条 ---- */
 
@@ -200,6 +227,18 @@ body {
   margin: 0 2px;
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* 循环作息模式：隐藏时长/±，显示跳过；∞/1× 按钮切换模式 */
+#controls [data-act="skip"] { display: none; }
+
+#controls.cycle [data-act="skip"] { display: inline-block; }
+
+#controls.cycle .dur,
+#controls.cycle [data-act="m5"],
+#controls.cycle [data-act="m1"],
+#controls.cycle [data-act="p1"],
+#controls.cycle [data-act="p5"],
+#controls.cycle .ctl-gap { display: none; }
 
 /* ---- 自定义时长输入 ---- */
 
