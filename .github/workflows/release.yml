@@ -52,8 +52,11 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          awk -v pat="^## \\[${VERSION}\\]" '
-            $0 ~ pat { found = 1; next }
+          # 用 index() 做字面前缀匹配。不要用带 \[ 的正则：bash 与 awk -v 的
+          # 双层反转义会把 \[ 退化成 [，模式变成字符类，永远匹配不到标题
+          # （v0.2.0 及之前的发布说明全是兜底文案就是这个原因）。
+          awk -v heading="## [$VERSION]" '
+            index($0, heading) == 1 { found = 1; next }
             found && /^## / { exit }
             found { print }
           ' CHANGELOG.md > notes.md
