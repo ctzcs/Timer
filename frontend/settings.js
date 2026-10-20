@@ -51,6 +51,7 @@ const el = {
 let currentLang = "zh-CN";
 let updateState = "idle"; // idle / checking / found / downloading
 let pendingUpdate = null; // 检查到的更新（含 url、latest）
+let dragState = null; // 进行中的拖动 { finish(save) }，全局只允许一个
 
 function applyTexts(d) {
   document.title = d.settings;
@@ -115,8 +116,8 @@ function applyState(s) {
   el.onTopChk.checked = s.alwaysOnTop === true;
   el.autoStartChk.checked = s.autoStart === true;
 
-  // 课表编辑中（任一输入框持有焦点）不重建列表，等失焦后由下一次广播刷新
-  if (!el.schedList.contains(document.activeElement)) {
+  // 课表编辑中（任一输入框持有焦点）或拖动进行中不重建列表，结束后由下一次广播刷新
+  if (!dragActive && !el.schedList.contains(document.activeElement)) {
     renderSchedule(Array.isArray(s.schedule) ? s.schedule : []);
   }
   setUpdateUI();
@@ -178,23 +179,36 @@ function makeSchedRow(rule) {
   return row;
 }
 
+// dragActive 标记有拖动正在进行：applyState 据此跳过课表重建，
+// 避免上一次保存的广播恰好回来时把正在拖的行换掉。
+let dragActive = false;
+
 // makeDraggable 手柄拖动排序：按住手柄上下拖，越过相邻行中点即交换位置。
+// 收尾有三层兜底——捕获正常时 pointerup 直接到达；捕获被静默释放时
+// lostpointercapture 或 window 级 pointerup 兜住；窗口失焦时强制收尾。
+// 缺了任何一层，行就会停在带 transform 的半途（表现为“卡住”）。
 function makeDraggable(row, grip) {
   grip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return; // 只响应左键
     e.preventDefault();
-    grip.setPointerCapture(e.pointerId);
+    if (dragState) dragState.finish(false); // 上一次拖动异常残留时先收尾
+    try { grip.setPointerCapture(e.pointerId); } catch { /* 合成事件无活动指针 */ }
     const step = row.offsetHeight + 5; // 行高 + 行距
     let startY = e.clientY;
     let dy = 0;
     let moved = false;
+    let done = false;
     row.classList.add("dragging");
-    const onMove = (ev) => {
+    dragActive = true;
+    const move = (ev) => {
       dy = ev.clientY - startY;
       row.style.transform = `translateY(${dy}px)`;
+      // 交换时必须移动相邻行、绝不能移动被拖行：行离开 DOM 的瞬间
+      // 指针捕获会被隐式释放，拖动要么卡死（收不到 pointerup）、要么提前结束
       if (dy > step / 2) {
         const next = row.nextElementSibling;
         if (next) {
-          row.parentElement.insertBefore(next, row);
+          row.before(next);
           startY += step;
           dy -= step;
           row.style.transform = `translateY(${dy}px)`;
@@ -203,7 +217,7 @@ function makeDraggable(row, grip) {
       } else if (dy < -step / 2) {
         const prev = row.previousElementSibling;
         if (prev) {
-          row.parentElement.insertBefore(row, prev);
+          row.after(prev);
           startY -= step;
           dy += step;
           row.style.transform = `translateY(${dy}px)`;
@@ -211,17 +225,31 @@ function makeDraggable(row, grip) {
         }
       }
     };
-    const onUp = () => {
-      grip.removeEventListener("pointermove", onMove);
-      grip.removeEventListener("pointerup", onUp);
-      grip.removeEventListener("pointercancel", onUp);
+    const finish = (save) => {
+      if (done) return;
+      done = true;
+      dragState = null;
+      dragActive = false;
+      grip.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("blur", blurFinish);
+      grip.removeEventListener("lostpointercapture", lost);
       row.style.transform = "";
       row.classList.remove("dragging");
-      if (moved) commitSchedule(); // 顺序变了就整表保存
+      if (save && moved) commitSchedule(); // 顺序变了就整表保存
     };
-    grip.addEventListener("pointermove", onMove);
-    grip.addEventListener("pointerup", onUp);
-    grip.addEventListener("pointercancel", onUp);
+    const up = () => finish(true);
+    const cancel = () => finish(false);
+    // 丢捕获时按键通常已松开，按正常收尾处理
+    const lost = () => finish(true);
+    const blurFinish = () => finish(false);
+    grip.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("blur", blurFinish);
+    grip.addEventListener("lostpointercapture", lost);
+    dragState = { finish };
   });
 }
 

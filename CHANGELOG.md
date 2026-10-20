@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.2] - 2026-10-20
+
+### Fixed
+
+- **Timetable drag-and-drop was unreliable**: swapping a row with the one above detached the dragged row from the DOM, which silently releases pointer capture — dragging up froze the row mid-air (the drop was never delivered), so the row looked stuck. Swaps now move the neighbour instead of the dragged row, keeping capture alive for the whole drag. As a safety net the drag also finishes via window-level pointerup/pointercancel, `lostpointercapture` and window blur, and pending state broadcasts no longer rebuild the list mid-drag.
+
 ## [0.2.1] - 2026-10-20
 
 ### Added
