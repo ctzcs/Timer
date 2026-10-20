@@ -22,10 +22,13 @@ Built on [MyGo](https://github.com/egoist/mygo) (Go + system WebView2). Pure Go 
 
 Like a school timetable: in Settings → **Timetable** you lay out your own day as time slots — **cycle** slots alternate work/break (45 + 10 min by default, both configurable), **break** slots are plain rest (lunch, a nap, anything). Bells ring at clock times, not at "N minutes after you started":
 
+- Optional **long break**: after every N work rounds inside a cycle slot, the following break is a longer one (e.g. 15 min after every 4 rounds; 0 = off)
+
 - Click start at any time and the timer joins the slot in progress (09:20 start → 25 minutes left of the 09:00 block). Restart the app mid-day and it picks up where the day is
 - Gaps between slots count down as "break" until the next slot begins; starting after the last slot ends the day with a "day complete" chime
 - Rest phases light the segment bar green; the LCD badge shows work / break / day complete; `»` or `S` skips to the next phase (it still ends at its scheduled clock time)
 - With no slots configured the mode degrades to an endless work/break loop until reset
+- Timetable rows have drag handles (⋮⋮) and keep your arrangement; overlapping slots resolve to the earlier-starting one
 - Auto-advance (on by default) rings one chime and moves on; turn it off to require a click after each phase
 - The timetable is stored in `config.json` with a schema version, so it survives app upgrades
 

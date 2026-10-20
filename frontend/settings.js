@@ -28,14 +28,21 @@ const el = {
   modeLabel: document.getElementById("t-mode"),
   cycleWorkLabel: document.getElementById("t-cycle-work"),
   cycleRestLabel: document.getElementById("t-cycle-rest"),
+  cycleLongRestLabel: document.getElementById("t-cycle-long-rest"),
+  cycleLongEveryLabel: document.getElementById("t-cycle-long-every"),
   cycleAutoLabel: document.getElementById("t-cycle-auto"),
   minWork: document.getElementById("t-min-work"),
   minRest: document.getElementById("t-min-rest"),
+  minLong: document.getElementById("t-min-long"),
+  roundUnit: document.getElementById("t-round-unit"),
+  longHint: document.getElementById("t-long-hint"),
   schedTitle: document.getElementById("t-sched"),
   schedHint: document.getElementById("t-sched-hint"),
   modeSel: document.getElementById("mode"),
   cycleWork: document.getElementById("cycleWork"),
   cycleRest: document.getElementById("cycleRest"),
+  cycleLongRest: document.getElementById("cycleLongRest"),
+  cycleLongEvery: document.getElementById("cycleLongEvery"),
   cycleAutoChk: document.getElementById("cycleAuto"),
   schedList: document.getElementById("schedList"),
   schedAdd: document.getElementById("schedAdd"),
@@ -62,9 +69,14 @@ function applyTexts(d) {
   el.navTimetable.textContent = d.navTimetable;
   el.cycleWorkLabel.textContent = d.cycleWork;
   el.cycleRestLabel.textContent = d.cycleRest;
+  el.cycleLongRestLabel.textContent = d.cycleLongRest;
+  el.cycleLongEveryLabel.textContent = d.cycleLongEvery;
   el.cycleAutoLabel.textContent = d.cycleAuto;
   el.minWork.textContent = d.unit;
   el.minRest.textContent = d.unit;
+  el.minLong.textContent = d.unit;
+  el.roundUnit.textContent = d.roundUnit;
+  el.longHint.textContent = d.longEveryHint;
   el.schedTitle.textContent = d.schedTitle;
   el.schedHint.textContent = d.schedEmpty;
   el.schedAdd.textContent = d.schedAdd;
@@ -95,6 +107,8 @@ function applyState(s) {
   if (document.activeElement !== el.modeSel) el.modeSel.value = s.mode === "cycle" ? "cycle" : "countdown";
   if (document.activeElement !== el.cycleWork) el.cycleWork.value = s.cycleWork > 0 ? s.cycleWork : 45;
   if (document.activeElement !== el.cycleRest) el.cycleRest.value = s.cycleRest > 0 ? s.cycleRest : 10;
+  if (document.activeElement !== el.cycleLongRest) el.cycleLongRest.value = s.cycleLongRest > 0 ? s.cycleLongRest : 15;
+  if (document.activeElement !== el.cycleLongEvery) el.cycleLongEvery.value = s.cycleLongEvery > 0 ? s.cycleLongEvery : 0;
   el.cycleAutoChk.checked = s.cycleAuto !== false;
   el.soundChk.checked = s.sound !== false;
   el.animChk.checked = s.anim !== false;
@@ -117,11 +131,17 @@ function renderSchedule(rules) {
   updateSchedHint();
 }
 
-// makeSchedRow 生成一行：[开始] – [结束] [类型] [删除]。任何改动立即整表保存。
+// makeSchedRow 生成一行：[拖动手柄] [开始] – [结束] [类型] [删除]。任何改动立即整表保存。
 function makeSchedRow(rule) {
   const d = window.TimerI18N.pick(currentLang);
   const row = document.createElement("div");
   row.className = "sched-row";
+
+  const grip = document.createElement("span");
+  grip.className = "grip";
+  grip.textContent = "⋮⋮";
+  grip.title = d.schedDrag;
+  makeDraggable(row, grip);
 
   const start = document.createElement("input");
   start.type = "time";
@@ -154,8 +174,75 @@ function makeSchedRow(rule) {
   for (const input of [start, end, type]) {
     input.addEventListener("change", commitSchedule);
   }
-  row.append(start, dash, end, type, del);
+  row.append(grip, start, dash, end, type, del);
   return row;
+}
+
+// makeDraggable 手柄拖动排序：按住手柄上下拖，越过相邻行中点即交换位置。
+function makeDraggable(row, grip) {
+  grip.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    const step = row.offsetHeight + 5; // 行高 + 行距
+    let startY = e.clientY;
+    let dy = 0;
+    let moved = false;
+    row.classList.add("dragging");
+    const onMove = (ev) => {
+      dy = ev.clientY - startY;
+      row.style.transform = `translateY(${dy}px)`;
+      if (dy > step / 2) {
+        const next = row.nextElementSibling;
+        if (next) {
+          row.parentElement.insertBefore(next, row);
+          startY += step;
+          dy -= step;
+          row.style.transform = `translateY(${dy}px)`;
+          moved = true;
+        }
+      } else if (dy < -step / 2) {
+        const prev = row.previousElementSibling;
+        if (prev) {
+          row.parentElement.insertBefore(row, prev);
+          startY -= step;
+          dy += step;
+          row.style.transform = `translateY(${dy}px)`;
+          moved = true;
+        }
+      }
+    };
+    const onUp = () => {
+      grip.removeEventListener("pointermove", onMove);
+      grip.removeEventListener("pointerup", onUp);
+      grip.removeEventListener("pointercancel", onUp);
+      row.style.transform = "";
+      row.classList.remove("dragging");
+      if (moved) commitSchedule(); // 顺序变了就整表保存
+    };
+    grip.addEventListener("pointermove", onMove);
+    grip.addEventListener("pointerup", onUp);
+    grip.addEventListener("pointercancel", onUp);
+  });
+}
+
+// nextSlotDefaults 新增行的默认值：接着最后一行的结束时间开始（列表里始终追加
+// 在末尾），类型与上一行交替（循环↔休息），半小时或一小时由用户自行调整。
+function nextSlotDefaults() {
+  const last = el.schedList.lastElementChild;
+  if (!last) return { start: "09:00", end: "12:00", type: "cycle" };
+  const times = last.querySelectorAll("input");
+  const type = last.querySelector("select");
+  const end = times[1].value || "18:00";
+  const plus = (hm, add) => {
+    const m = parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10) + add;
+    if (m >= 24 * 60) return "23:59";
+    return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  };
+  return {
+    start: end,
+    end: plus(end, 60),
+    type: type && type.value === "break" ? "cycle" : "break",
+  };
 }
 
 // commitSchedule 从 DOM 收集课表整表保存；非法条目由 Go 侧统一剔除。
@@ -266,9 +353,11 @@ async function init() {
       window.mygo.call("Timer.SetMode", el.modeSel.value).catch((e) => console.error(e)));
     el.cycleWork.addEventListener("change", commitCycle);
     el.cycleRest.addEventListener("change", commitCycle);
+    el.cycleLongRest.addEventListener("change", commitCycle);
+    el.cycleLongEvery.addEventListener("change", commitCycle);
     el.cycleAutoChk.addEventListener("change", commitCycle);
     el.schedAdd.addEventListener("click", () => {
-      el.schedList.appendChild(makeSchedRow({ start: "09:00", end: "12:00", type: "cycle" }));
+      el.schedList.appendChild(makeSchedRow(nextSlotDefaults()));
       commitSchedule();
     });
     el.soundChk.addEventListener("change", () =>
@@ -288,7 +377,8 @@ async function init() {
     // 浏览器调试：给一份带课表的样例，便于单独调样式
     applyState({
       version: "0.2.0", lang: "zh-CN", sound: true, alwaysOnTop: true, autoStart: false,
-      alarm: "loop", mode: "cycle", cycleWork: 45, cycleRest: 10, cycleAuto: true,
+      alarm: "loop", mode: "cycle", cycleWork: 45, cycleRest: 10, cycleLongEvery: 4, cycleLongRest: 15,
+      cycleAuto: true,
       schedule: [
         { start: "09:00", end: "12:00", type: "cycle" },
         { start: "12:00", end: "13:30", type: "break" },
@@ -298,16 +388,18 @@ async function init() {
   }
 }
 
-// commitCycle 保存工作/休息时长与自动切换开关。
+// commitCycle 保存工作/休息/长休息参数与自动切换开关。
 function commitCycle() {
-  const work = parseInt(el.cycleWork.value, 10);
-  const rest = parseInt(el.cycleRest.value, 10);
+  const num = (input) => parseInt(input.value, 10);
   if (inMyGo) {
-    window.mygo.call("Timer.SaveCycle", work, rest, el.cycleAutoChk.checked)
+    window.mygo.call("Timer.SaveCycle", num(el.cycleWork), num(el.cycleRest),
+      num(el.cycleLongEvery), num(el.cycleLongRest), el.cycleAutoChk.checked)
       .catch((e) => console.error(e));
   } else {
     const s = lsLoad();
-    s.cycleWork = work; s.cycleRest = rest; s.cycleAuto = el.cycleAutoChk.checked;
+    s.cycleWork = num(el.cycleWork); s.cycleRest = num(el.cycleRest);
+    s.cycleLongEvery = num(el.cycleLongEvery); s.cycleLongRest = num(el.cycleLongRest);
+    s.cycleAuto = el.cycleAutoChk.checked;
     localStorage.setItem("timer-state", JSON.stringify(s));
   }
 }

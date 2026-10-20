@@ -167,7 +167,31 @@ select:focus { border-color: #8a8a86; }
   align-items: center;
   gap: 5px;
   padding: 3px 0;
+  border-radius: 6px;
 }
+
+.sched-row.dragging {
+  position: relative;
+  z-index: 2;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  opacity: 0.92;
+}
+
+.sched-row .grip {
+  padding: 2px 3px;
+  color: #b9b9b6;
+  font-size: 11px;
+  letter-spacing: -2px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sched-row .grip:hover { color: #6e6e6a; }
+
+.sched-row.dragging .grip { cursor: grabbing; }
 
 .sched-row input[type="time"] {
   border: 1px solid #d5d5d2;
@@ -210,6 +234,12 @@ select:focus { border-color: #8a8a86; }
   gap: 4px;
   color: #8a8a86;
   font-size: 12px;
+}
+
+.num .hint {
+  margin-left: 2px;
+  color: #b9b9b6;
+  font-size: 11px;
 }
 
 .num input {

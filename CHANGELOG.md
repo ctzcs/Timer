@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] - 2026-10-20
+
+### Added
+
+- **Long break in cycle slots**: after every N work rounds the following break becomes a long one (length configurable, default 15 min; set the interval to 0 to disable). Works in timetable cycle slots and in the no-timetable endless loop.
+
+### Changed
+
+- **Timetable rows keep your order**: each slot has a drag handle (⋮⋮) to rearrange the day, and rows are saved as arranged instead of being force-sorted by start time (timing still processes slots chronologically; overlapping slots resolve to the earlier-starting one). Config schema moves to v2; 0.2.0 configs migrate transparently and long breaks stay off until enabled.
+
+### Fixed
+
+- New timetable slots no longer jump into the middle of the list — "+ Add time slot" appends at the end, starting from the last slot's end time, alternating cycle/break.
+
 ## [0.2.0] - 2026-10-20
 
 ### Added

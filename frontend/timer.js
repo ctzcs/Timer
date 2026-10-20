@@ -41,6 +41,8 @@ let mode = "countdown";   // countdown / cycle
 let phase = "idle";       // 循环模式当前相位：idle / work / rest / done
 let cycleWork = 45;       // 循环段内工作时长（分）
 let cycleRest = 10;       // 循环段内休息时长（分）
+let cycleLongEvery = 0;   // 每工作 N 轮长休息，0=不启用
+let cycleLongRest = 15;   // 长休息时长（分）
 let cycleAuto = true;     // 相位结束自动进入下一段
 let schedule = [];        // 每日课表 [{start,end,type}]（Go 侧已排序校验）
 let cycleOrigin = 0;      // 空课表自由循环的起点（ms）
@@ -57,7 +59,8 @@ const inMyGo = typeof window.mygo !== "undefined" && !!window.mygo.call;
 
 function lsDefaults() {
   return { minutes: 30, sound: true, alwaysOnTop: true, autoStart: false, lang: "zh-CN",
-    mode: "countdown", cycleWork: 45, cycleRest: 10, cycleAuto: true, schedule: [] };
+    mode: "countdown", cycleWork: 45, cycleRest: 10, cycleLongEvery: 0, cycleLongRest: 15,
+    cycleAuto: true, schedule: [] };
 }
 
 function lsLoad() {
@@ -76,7 +79,7 @@ async function ipc(method, ...args) {
   const s = lsLoad();
   if (method === "SaveMinutes") s.minutes = args[0];
   else if (method === "SetMode") s.mode = args[0];
-  else if (method === "SaveCycle") { s.cycleWork = args[0]; s.cycleRest = args[1]; s.cycleAuto = args[2]; }
+  else if (method === "SaveCycle") { s.cycleWork = args[0]; s.cycleRest = args[1]; s.cycleLongEvery = args[2]; s.cycleLongRest = args[3]; s.cycleAuto = args[4]; }
   else if (method === "SaveSchedule") s.schedule = args[0];
   else return;
   localStorage.setItem("timer-state", JSON.stringify(s));
@@ -95,29 +98,59 @@ function hmToMin(hm) {
   return parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10);
 }
 
+// sortRules 课表按开始时间排序的工作副本（存储顺序由用户拖动决定）。
+function sortRules(rules) {
+  return rules.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+}
+
+// cyclePhaseIn 计算循环段内「段起点起算 relMs 毫秒」所在的相位。
+// 启用长休息时按 N 轮一组循环：N 轮工作 + 前面各一轮短休息 + 最后一轮长休息，
+// 一组时长 = N*(工+休) - 休 + 长；未启用时就是 工作/休息 的简单取模。
+// 返回 {phase, end}，end 与 relMs 同基准（段起点起算的毫秒时刻）。
+function cyclePhaseIn(relMs) {
+  const w = cycleWork * 60000, r = cycleRest * 60000;
+  const n = cycleLongEvery > 0 ? cycleLongEvery : 0;
+  if (!n) {
+    const cyc = w + r;
+    const pos = relMs % cyc;
+    return { phase: pos < w ? "work" : "rest", end: relMs - pos + (pos < w ? w : cyc) };
+  }
+  const l = cycleLongRest * 60000;
+  const round = w + r;
+  const block = n * round - r + l;
+  const pos = relMs % block;
+  const lastWorkEnd = (n - 1) * round + w;
+  if (pos >= lastWorkEnd) {
+    return { phase: "rest", end: relMs - pos + block }; // 第 n 轮工作后的长休息
+  }
+  const i = Math.floor(pos / round);
+  const inRound = pos - i * round;
+  if (inRound < w) return { phase: "work", end: relMs - inRound + w };
+  return { phase: "rest", end: relMs - inRound + round }; // 前几轮的短休息
+}
+
 // scheduleAt 计算 t 时刻课表所在的相位：{phase:"work"|"rest"|"done", endTs}。
 // 课表为空时退化为自由循环（从 cycleOrigin 起 工作/休息 交替）。
 // 钟点锚定：相位边界都来自课表钟点，暂停/重启后按当下时刻重新对齐。
 // "rest" 同时覆盖时段空档（等待下一段开始的待命时间）。
+// schedule 是已按开始时间排好序的工作副本。
 function scheduleAt(t) {
-  const w = cycleWork * 60000, cyc = w + cycleRest * 60000;
   if (!schedule.length) {
     if (!cycleOrigin || t < cycleOrigin) return null;
-    const pos = (t - cycleOrigin) % cyc;
-    return { phase: pos < w ? "work" : "rest", endTs: t - pos + (pos < w ? w : cyc) };
+    const x = cyclePhaseIn(t - cycleOrigin);
+    return { phase: x.phase, endTs: cycleOrigin + x.end };
   }
   const dayStart = tsOfDay(0);
   const rel = t - dayStart; // 当天经过的毫秒
   let nextStart = null;
   for (const r of schedule) {
     const s = hmToMin(r.start) * 60000, e = hmToMin(r.end) * 60000;
-    if (rel < s) { nextStart = s; break; } // 课表按开始时间排序，第一条未到的就是下一段
+    if (rel < s) { nextStart = s; break; } // 已排序，第一条未到的时段就是下一段
     if (rel >= e) continue;
     if (r.type === "break") return { phase: "rest", endTs: dayStart + e };
-    // 循环段：段内按 工作/休息 周期切分，相位终点取周期点与段尾较早者
-    const pos = (rel - s) % cyc;
-    const phaseEnd = rel - pos + (pos < w ? w : cyc);
-    return { phase: pos < w ? "work" : "rest", endTs: dayStart + Math.min(phaseEnd, e) };
+    // 循环段：段内按 工作/休息(/长休息) 周期切分，相位终点取周期点与段尾较早者
+    const x = cyclePhaseIn(rel - s);
+    return { phase: x.phase, endTs: dayStart + s + Math.min(x.end, e - s) };
   }
   if (nextStart !== null) return { phase: "rest", endTs: dayStart + nextStart };
   return { phase: "done", endTs: 0 }; // 今日时段全部结束
@@ -188,8 +221,10 @@ function applyState(s) {
 
   cycleWork = s.cycleWork > 0 ? s.cycleWork : cycleWork;
   cycleRest = s.cycleRest > 0 ? s.cycleRest : cycleRest;
+  cycleLongEvery = s.cycleLongEvery > 0 ? s.cycleLongEvery : 0;
+  cycleLongRest = s.cycleLongRest > 0 ? s.cycleLongRest : cycleLongRest;
   cycleAuto = s.cycleAuto !== false;
-  schedule = Array.isArray(s.schedule) ? s.schedule : [];
+  schedule = sortRules(Array.isArray(s.schedule) ? s.schedule : []);
 
   if (s.lang && s.lang !== lang) {
     lang = s.lang;
@@ -602,8 +637,10 @@ window.addEventListener("hashchange", applyDebugControls);
   mode = s && s.mode === "cycle" ? "cycle" : "countdown";
   cycleWork = s && s.cycleWork > 0 ? s.cycleWork : 45;
   cycleRest = s && s.cycleRest > 0 ? s.cycleRest : 10;
+  cycleLongEvery = s && s.cycleLongEvery > 0 ? s.cycleLongEvery : 0;
+  cycleLongRest = s && s.cycleLongRest > 0 ? s.cycleLongRest : 15;
   cycleAuto = !s || s.cycleAuto !== false;
-  schedule = s && Array.isArray(s.schedule) ? s.schedule : [];
+  schedule = sortRules(s && Array.isArray(s.schedule) ? s.schedule : []);
   if (mode === "countdown" && s && s.minutes) {
     totalSec = remainSec = Math.min(99, Math.max(1, s.minutes)) * 60;
   } else if (mode === "cycle") {

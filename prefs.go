@@ -12,14 +12,13 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/egoist/mygo"
 )
 
 // schemaVersion 是 config.json 的结构版本，与 appVersion 无关。
 // 改配置结构时 +1，并在 migrations 里注册对应迁移函数。
-const schemaVersion = 1
+const schemaVersion = 2
 
 // 计时模式：单次倒计时 / 循环作息。
 const (
@@ -64,8 +63,10 @@ type Prefs struct {
 	Mode       string      `json:"mode"`
 	CycleWork  int         `json:"cycleWork"` // 循环段内工作时长（分钟）
 	CycleRest  int         `json:"cycleRest"` // 循环段内休息时长（分钟）
+	CycleLongEvery int     `json:"cycleLongEvery"` // 每工作 N 轮安排一次长休息，0=不启用
+	CycleLongRest  int     `json:"cycleLongRest"`  // 长休息时长（分钟）
 	CycleAuto  bool        `json:"cycleAuto"` // 相位结束自动进入下一段
-	Schedule   []CycleRule `json:"schedule"`  // 每日课表，按开始时间排序
+	Schedule   []CycleRule `json:"schedule"`  // 每日时间表，顺序即用户排列（行可拖动调整）
 }
 
 func defaultPrefs() Prefs {
@@ -80,6 +81,8 @@ func defaultPrefs() Prefs {
 		Mode:        modeCountdown,
 		CycleWork:   45,
 		CycleRest:   10,
+		CycleLongEvery: 0, // 默认不启用，升级用户行为不变
+		CycleLongRest:  15,
 		CycleAuto:   defaultCycleAuto,
 	}
 }
@@ -88,12 +91,17 @@ func defaultPrefs() Prefs {
 // migrateVNtoVN+1，老配置启动时自动逐级升级，已落盘的用户数据不丢。
 var migrations = map[int]func(*Prefs){
 	1: migrateV0toV1,
+	2: migrateV1toV2,
 }
 
 // migrateV0toV1：0.1.x 旧格式（无 version 字段）→ v1（新增循环作息字段）。
 // 新字段在解析时已从 defaultPrefs 拿到默认值，这里无数据需要变换，
 // 保留函数作为迁移链的起点示例。
 func migrateV0toV1(_ *Prefs) {}
+
+// migrateV1toV2：0.2.0 的 v1 → v2（新增长休息字段）。
+// CycleLongEvery 默认 0（不启用），升级用户的工作/休息节奏保持不变。
+func migrateV1toV2(_ *Prefs) {}
 
 // parsePrefs 解析并规范化配置字节流：跑迁移链到当前版本，再做钳位与白名单校验。
 // 任何坏值都以默认值兜底，绝不让应用起不来。解析彻底失败返回错误，由调用方备份原文件。
@@ -144,10 +152,18 @@ func sanitizePrefs(p *Prefs) {
 	if p.CycleRest < 1 || p.CycleRest > 99 {
 		p.CycleRest = 10
 	}
+	if p.CycleLongEvery < 0 || p.CycleLongEvery > 99 {
+		p.CycleLongEvery = 0
+	}
+	if p.CycleLongRest < 1 || p.CycleLongRest > 99 {
+		p.CycleLongRest = 15
+	}
 	p.Schedule = sanitizeSchedule(p.Schedule)
 }
 
-// sanitizeSchedule 校验课表条目：时间格式非法、起止颠倒、类型未知的丢弃，按开始时间排序。
+// sanitizeSchedule 校验课表条目：时间格式非法、起止颠倒、类型未知的丢弃。
+// 保持用户在设置里排的顺序（行可拖动调整顺序）；重叠时段按先开始者优先，
+// 计时引擎（timer.js scheduleAt）在使用侧自行按开始时间排序。
 func sanitizeSchedule(rules []CycleRule) []CycleRule {
 	out := make([]CycleRule, 0, len(rules))
 	for _, r := range rules {
@@ -156,7 +172,6 @@ func sanitizeSchedule(rules []CycleRule) []CycleRule {
 		}
 		out = append(out, r)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Start < out[j].Start })
 	return out
 }
 

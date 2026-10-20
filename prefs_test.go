@@ -28,6 +28,28 @@ func TestParseLegacyV0Prefs(t *testing.T) {
 	if p.Mode != modeCountdown || p.CycleWork != 45 || p.CycleRest != 10 || !p.CycleAuto || len(p.Schedule) != 0 {
 		t.Errorf("v0→v1 默认值不对: %+v", p)
 	}
+	if p.CycleLongEvery != 0 || p.CycleLongRest != 15 {
+		t.Errorf("长休息默认值不对: %+v", p)
+	}
+}
+
+func TestParseV1MigratesToV2(t *testing.T) {
+	// 0.2.0 写出的 v1 配置：有 version=1，无长休息字段
+	data := []byte(`{"version": 1, "minutes": 45, "mode": "cycle", "cycleWork": 45, "cycleRest": 10, "cycleAuto": true}`)
+	p, err := parsePrefs(data)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if p.Version != schemaVersion {
+		t.Errorf("Version = %d, want %d", p.Version, schemaVersion)
+	}
+	// 长休息默认关闭，升级用户的节奏不变
+	if p.CycleLongEvery != 0 || p.CycleLongRest != 15 {
+		t.Errorf("v1→v2 默认值不对: %+v", p)
+	}
+	if p.Mode != modeCycle || p.CycleWork != 45 {
+		t.Errorf("原有字段被改动: %+v", p)
+	}
 }
 
 func TestParseClampsBadValues(t *testing.T) {
@@ -38,6 +60,8 @@ func TestParseClampsBadValues(t *testing.T) {
 	  "mode": "banana",
 	  "cycleWork": 0,
 	  "cycleRest": 1000,
+	  "cycleLongEvery": -5,
+	  "cycleLongRest": 1000,
 	  "cycleAuto": false,
 	  "anim": false
 	}`)
@@ -50,6 +74,9 @@ func TestParseClampsBadValues(t *testing.T) {
 	}
 	if p.Mode != modeCountdown || p.CycleWork != 45 || p.CycleRest != 10 {
 		t.Errorf("循环参数钳位失败: %+v", p)
+	}
+	if p.CycleLongEvery != 0 || p.CycleLongRest != 15 {
+		t.Errorf("长休息钳位失败: %+v", p)
 	}
 	// 明确写了 false 的要保留
 	if p.CycleAuto || p.Anim {
@@ -100,10 +127,11 @@ func TestParseScheduleValidation(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("保留 %d 条, want 2: %+v", len(got), got)
 	}
-	if got[0].Start != "12:00" || got[1].Start != "13:30" {
-		t.Errorf("排序错误: %+v", got)
+	// 顺序保持用户排列（不再强制按开始时间排序），非法条目被剔除
+	if got[0].Start != "13:30" || got[1].Start != "12:00" {
+		t.Errorf("顺序被改写: %+v", got)
 	}
-	if got[0].Type != ruleBreak || got[1].Type != ruleCycle {
+	if got[0].Type != ruleCycle || got[1].Type != ruleBreak {
 		t.Errorf("类型错误: %+v", got)
 	}
 }

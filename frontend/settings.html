@@ -78,6 +78,13 @@
 
         <div class="rule"></div>
 
+        <div class="group-title" id="t-sched">每日时间表</div>
+        <div class="sched-hint" id="t-sched-hint"></div>
+        <div id="schedList"></div>
+        <button id="schedAdd" class="btn btn-wide"></button>
+
+        <div class="rule"></div>
+
         <div class="row">
           <label id="t-cycle-work" for="cycleWork">工作时长</label>
           <span class="num"><input type="number" id="cycleWork" min="1" max="99" maxlength="2" /><span id="t-min-work">分</span></span>
@@ -86,17 +93,18 @@
           <label id="t-cycle-rest" for="cycleRest">休息时长</label>
           <span class="num"><input type="number" id="cycleRest" min="1" max="99" maxlength="2" /><span id="t-min-rest">分</span></span>
         </div>
+        <div class="row">
+          <label id="t-cycle-long-rest" for="cycleLongRest">长休息时长</label>
+          <span class="num"><input type="number" id="cycleLongRest" min="1" max="99" maxlength="2" /><span id="t-min-long">分</span></span>
+        </div>
+        <div class="row">
+          <label id="t-cycle-long-every" for="cycleLongEvery">长休息间隔</label>
+          <span class="num"><input type="number" id="cycleLongEvery" min="0" max="99" maxlength="2" /><span id="t-round-unit">轮</span><span class="hint" id="t-long-hint"></span></span>
+        </div>
         <label class="row chk">
           <input type="checkbox" id="cycleAuto" />
           <span id="t-cycle-auto">自动切换下一段</span>
         </label>
-
-        <div class="rule"></div>
-
-        <div class="group-title" id="t-sched">每日时间表</div>
-        <div class="sched-hint" id="t-sched-hint"></div>
-        <div id="schedList"></div>
-        <button id="schedAdd" class="btn btn-wide"></button>
       </section>
     </main>
   </div>

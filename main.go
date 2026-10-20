@@ -52,6 +52,8 @@ type UIState struct {
 	Mode        string      `json:"mode"`
 	CycleWork   int         `json:"cycleWork"`
 	CycleRest   int         `json:"cycleRest"`
+	CycleLongEvery int      `json:"cycleLongEvery"`
+	CycleLongRest  int      `json:"cycleLongRest"`
 	CycleAuto   bool        `json:"cycleAuto"`
 	Schedule    []CycleRule `json:"schedule"`
 }
@@ -135,6 +137,8 @@ func (t *timerApp) snapshot() UIState {
 		Mode:        mode,
 		CycleWork:   p.CycleWork,
 		CycleRest:   p.CycleRest,
+		CycleLongEvery: p.CycleLongEvery,
+		CycleLongRest:  p.CycleLongRest,
 		CycleAuto:   p.CycleAuto,
 		Schedule:    p.Schedule,
 	}
@@ -300,19 +304,25 @@ func (t *timerApp) SetMode(mode string) {
 	t.syncState()
 }
 
-// SaveCycle 保存循环作息参数（时长分钟 1–99，出界的保持原值）。
-func (t *timerApp) SaveCycle(work, rest int, auto bool) {
-	t.saveCyclePartial(&work, &rest, &auto)
+// SaveCycle 保存循环作息参数（时长分钟 1–99、间隔 0–99，出界的保持原值）。
+func (t *timerApp) SaveCycle(work, rest, longEvery, longRest int, auto bool) {
+	t.saveCyclePartial(&work, &rest, &longEvery, &longRest, &auto)
 }
 
 // saveCyclePartial 只更新给到的字段（nil 表示不动），一次改动广播一次状态。
-func (t *timerApp) saveCyclePartial(work, rest *int, auto *bool) {
+func (t *timerApp) saveCyclePartial(work, rest, longEvery, longRest *int, auto *bool) {
 	t.mu.Lock()
 	if work != nil && *work >= 1 && *work <= 99 {
 		t.prefs.CycleWork = *work
 	}
 	if rest != nil && *rest >= 1 && *rest <= 99 {
 		t.prefs.CycleRest = *rest
+	}
+	if longEvery != nil && *longEvery >= 0 && *longEvery <= 99 {
+		t.prefs.CycleLongEvery = *longEvery
+	}
+	if longRest != nil && *longRest >= 1 && *longRest <= 99 {
+		t.prefs.CycleLongRest = *longRest
 	}
 	if auto != nil {
 		t.prefs.CycleAuto = *auto
@@ -790,25 +800,30 @@ func (t *timerApp) applySetFlag(kv string) {
 		t.SetAnim(val == "on" || val == "true" || val == "1")
 	case "mode":
 		t.SetMode(val)
-	case "cyclework", "cyclerest":
-		// 只改一个字段，另一个保持当前值
+	case "cyclework", "cyclerest", "cyclelongevery", "cyclelongrest":
+		// 只改一个字段，其余保持当前值
 		n, err := strconv.Atoi(val)
 		if err != nil {
 			return
 		}
 		t.mu.Lock()
-		work, rest, auto := t.prefs.CycleWork, t.prefs.CycleRest, t.prefs.CycleAuto
+		work, rest, longEvery, longRest, auto := t.prefs.CycleWork, t.prefs.CycleRest, t.prefs.CycleLongEvery, t.prefs.CycleLongRest, t.prefs.CycleAuto
 		t.mu.Unlock()
-		if name == "cyclework" {
-			t.saveCyclePartial(&n, &rest, &auto)
-		} else {
-			t.saveCyclePartial(&work, &n, &auto)
+		switch name {
+		case "cyclework":
+			t.saveCyclePartial(&n, &rest, &longEvery, &longRest, &auto)
+		case "cyclerest":
+			t.saveCyclePartial(&work, &n, &longEvery, &longRest, &auto)
+		case "cyclelongevery":
+			t.saveCyclePartial(&work, &rest, &n, &longRest, &auto)
+		default:
+			t.saveCyclePartial(&work, &rest, &longEvery, &n, &auto)
 		}
 	case "cycleauto":
 		t.mu.Lock()
-		work, rest := t.prefs.CycleWork, t.prefs.CycleRest
+		work, rest, longEvery, longRest := t.prefs.CycleWork, t.prefs.CycleRest, t.prefs.CycleLongEvery, t.prefs.CycleLongRest
 		t.mu.Unlock()
-		t.saveCyclePartial(&work, &rest, boolPtr(val == "on" || val == "true" || val == "1"))
+		t.saveCyclePartial(&work, &rest, &longEvery, &longRest, boolPtr(val == "on" || val == "true" || val == "1"))
 	case "schedule":
 		// 调试用：--set schedule=09:00-12:00:cycle,12:00-13:30:break
 		t.SaveSchedule(parseScheduleFlag(val))
