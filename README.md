@@ -90,7 +90,9 @@ frontend/
   settings.css     Settings window styling
   timer.js         Timer logic & interactions, schedule engine, state sync
   fonts/           DSEG7 Classic font (MIT)
-assets/tray.png    Tray icon
+assets/tray.png    Tray icon; also the source for the embedded exe icon
+assets/timer.ico   Multi-size icon generated from tray.png (`python tools/make_icon.py`)
+rsrc_windows_amd64.syso  Windows resource embedding the exe icon (`go run github.com/akavel/rsrc@latest -ico assets/timer.ico -o rsrc_windows_amd64.syso`; picked up by `go build` automatically)
 ```
 
 ### Debug flags (against the running instance)

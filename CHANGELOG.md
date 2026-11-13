@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.3] - 2026-11-13
+
+### Added
+
+- **Application icon embedded in the exe**: `timer.exe` (and any shortcut to it) now shows the timer icon in Explorer and shortcuts instead of the generic Windows application icon. The icon is generated from the tray icon (`tools/make_icon.py` → `assets/timer.ico`) and linked in as a Windows resource (`rsrc_windows_amd64.syso`, picked up by `go build` automatically).
+
 ## [0.2.2] - 2026-10-20
 
 ### Fixed

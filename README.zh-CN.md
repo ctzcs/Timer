@@ -90,7 +90,9 @@ frontend/
   settings.css     设置窗口样式
   timer.js         计时逻辑与交互、课表引擎、状态同步
   fonts/           DSEG7 Classic 字体（MIT）
-assets/tray.png    托盘图标
+assets/tray.png    托盘图标；exe 内嵌图标也由它生成
+assets/timer.ico   多尺寸图标（`python tools/make_icon.py` 生成）
+rsrc_windows_amd64.syso  嵌入 exe 图标的 Windows 资源（`go run github.com/akavel/rsrc@latest -ico assets/timer.ico -o rsrc_windows_amd64.syso` 生成；`go build` 自动拾取）
 ```
 
 ### 调试参数（对运行中的实例）
